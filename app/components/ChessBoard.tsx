@@ -65,11 +65,7 @@ export default function ChessBoard({
             const isLastMoveSquare = isLastMove(sq)
             const isKingInCheck = sq === kingSquare
 
-            // Priority (high → low): check > from > to > legal > lastMove > base
             let bg = light ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'
-
-            // Last move: subtle gray
-            if (isLastMoveSquare) bg = light ? 'bg-[#d0cfc9]' : 'bg-[#9e9d98]'
 
             // Legal move: empty square — sky blue
             if (isLegal && legalCapture === false)
@@ -109,6 +105,14 @@ export default function ChessBoard({
                 aria-selected={isFrom || isTo}
                 aria-pressed={isFrom || isTo}
               >
+                {/* Last move: dotted border overlay */}
+                {isLastMoveSquare && (
+                  <div
+                    className="absolute inset-0 pointer-events-none z-20"
+                    style={{ border: '2px dashed rgba(80,60,20,0.45)' }}
+                    aria-hidden="true"
+                  />
+                )}
                 {piece && (
                   <div className="relative z-10 pointer-events-none">
                     <ChessPiece type={piece.type} color={piece.color} size={44} />
