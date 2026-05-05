@@ -25,6 +25,9 @@ interface MoveSelection {
 
 const EMPTY_SELECTION: MoveSelection = { from: null, to: null, piece: null }
 
+// Fool's mate — black queen on h4 checkmates white king on e1
+const DEMO_CHECKMATE_FEN = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3'
+
 function useChessGame() {
   const chessRef = useRef(new Chess())
 
@@ -37,7 +40,7 @@ function useChessGame() {
   const [selection, setSelection] = useState<MoveSelection>(EMPTY_SELECTION)
   const [legalMoves, setLegalMoves] = useState<LegalMoveSquare[]>([])
   const [announcement, setAnnouncement] = useState('')
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected')
+  const [connectionStatus] = useState<ConnectionStatus>('connected')
 
   const syncFromChess = useCallback(() => {
     const chess = chessRef.current
@@ -57,6 +60,19 @@ function useChessGame() {
     setSelection(EMPTY_SELECTION)
     setLegalMoves([])
     setAnnouncement('Game restarted.')
+  }, [])
+
+  const loadDemo = useCallback(() => {
+    chessRef.current = new Chess(DEMO_CHECKMATE_FEN)
+    setBoard(chessBoardToDisplay(chessRef.current))
+    setCurrentTurn(chessRef.current.turn())
+    setLastMove(null)
+    setCapturedByWhite([])
+    setCapturedByBlack([])
+    setGameStatus(getGameStatus(chessRef.current))
+    setSelection(EMPTY_SELECTION)
+    setLegalMoves([])
+    setAnnouncement("Demo loaded: Fool's Mate. White is in checkmate.")
   }, [])
 
   const selectSquare = useCallback((square: Square, piece: BoardPiece | null) => {
@@ -119,27 +135,13 @@ function useChessGame() {
     setLegalMoves([])
   }, [])
 
-  const receiveMoveFromBoard = useCallback((from: Square, to: Square) => {
-    const chess = chessRef.current
-    const piece = chess.get(from) as BoardPiece | false
-    if (!piece) return
-    setSelection({ from, to: null, piece: piece as BoardPiece })
-    setLegalMoves(getLegalMoves(chess, from))
-    setTimeout(() => {
-      setSelection((prev) => ({ ...prev, to }))
-      setAnnouncement(`Physical board move detected: ${from} to ${to}. Press Confirm Move to execute.`)
-    }, 600)
-  }, [])
-
   return {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
-    setConnectionStatus, selectSquare, confirmMove, cancelSelection,
-    receiveMoveFromBoard, restart,
+    selectSquare, confirmMove, cancelSelection, restart, loadDemo,
   }
 }
 
-// Game over overlay shown on top of the board
 function GameOverOverlay({
   status,
   lastMove,
@@ -191,43 +193,11 @@ function GameOverOverlay({
   )
 }
 
-// Dev tool simulate panel
-function SimulatePanel({ onSimulate }: { onSimulate: (from: Square, to: Square) => void }) {
-  const [from, setFrom] = useState('e2')
-  const [to, setTo] = useState('e4')
-  return (
-    <div className="border-t border-stone-200 px-4 py-3 bg-amber-50 flex items-center gap-2 text-sm">
-      <span className="text-amber-700 font-medium shrink-0">Simulate board →</span>
-      <input
-        className="w-14 border border-amber-300 rounded px-2 py-1 font-mono text-center text-xs"
-        value={from}
-        onChange={(e) => setFrom(e.target.value.toLowerCase())}
-        maxLength={2}
-        aria-label="From square"
-      />
-      <span className="text-amber-600">→</span>
-      <input
-        className="w-14 border border-amber-300 rounded px-2 py-1 font-mono text-center text-xs"
-        value={to}
-        onChange={(e) => setTo(e.target.value.toLowerCase())}
-        maxLength={2}
-        aria-label="To square"
-      />
-      <button
-        onClick={() => onSimulate(from as Square, to as Square)}
-        className="px-3 py-1 rounded bg-amber-600 text-white text-xs font-medium hover:bg-amber-700 transition-colors"
-      >
-        Send
-      </button>
-    </div>
-  )
-}
-
 export default function Home() {
   const {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
-    selectSquare, confirmMove, cancelSelection, receiveMoveFromBoard, restart,
+    selectSquare, confirmMove, cancelSelection, restart, loadDemo,
   } = useChessGame()
 
   return (
@@ -239,7 +209,6 @@ export default function Home() {
       <StatusHeader status={connectionStatus} />
 
       <main className="flex flex-1 overflow-hidden">
-        {/* Board area — relative so overlay is contained */}
         <div className="relative flex flex-1 items-center justify-center p-8">
           <ChessBoard
             board={board}
@@ -272,7 +241,17 @@ export default function Home() {
             onConfirm={confirmMove}
             onCancel={cancelSelection}
           />
-          <SimulatePanel onSimulate={receiveMoveFromBoard} />
+
+          {/* Dev demo panel */}
+          <div className="border-t border-stone-200 px-4 py-3 bg-stone-50 flex items-center justify-between">
+            <span className="text-xs text-stone-400">Dev</span>
+            <button
+              onClick={loadDemo}
+              className="text-xs px-3 py-1.5 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-100 transition-colors"
+            >
+              Demo: Checkmate
+            </button>
+          </div>
         </div>
       </main>
     </div>
