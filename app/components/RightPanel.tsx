@@ -1,33 +1,37 @@
 'use client'
 
-import { Piece, GameState, pieceLabel, squareLabel } from '@/app/lib/chess'
-
+import { BoardPiece, LastMove, GameStatus, pieceLabel, moveDescription } from '@/app/lib/chess'
+import { Square } from 'chess.js'
 import ChessPiece from './ChessPiece'
 
 interface MoveSelection {
-  from: { row: number; col: number } | null
-  to: { row: number; col: number } | null
-  piece: Piece | null
+  from: Square | null
+  to: Square | null
+  piece: BoardPiece | null
 }
 
 interface RightPanelProps {
-  gameState: GameState
+  currentTurn: 'w' | 'b'
+  lastMove: LastMove | null
+  capturedByWhite: BoardPiece[]
+  capturedByBlack: BoardPiece[]
+  gameStatus: GameStatus
+  connectionStatus: 'connected' | 'disconnected' | 'syncing'
   selection: MoveSelection
   onConfirm: () => void
   onCancel: () => void
-  disabled: boolean
 }
 
-function CapturedRow({ pieces, label }: { pieces: Piece[]; label: string }) {
+function CapturedRow({ pieces, label }: { pieces: BoardPiece[]; label: string }) {
   return (
     <div>
       <div className="text-xs uppercase tracking-widest text-stone-400 mb-1">{label}</div>
-      <div className="flex flex-wrap gap-0.5 min-h-[28px]">
+      <div className="flex flex-wrap gap-0.5 min-h-[28px] items-center">
         {pieces.length === 0 ? (
           <span className="text-stone-400 text-sm">—</span>
         ) : (
           pieces.map((p, i) => (
-            <ChessPiece key={i} type={p.type} color={p.color} size={24} />
+            <ChessPiece key={i} type={p.type} color={p.color} size={22} />
           ))
         )}
       </div>
@@ -35,44 +39,56 @@ function CapturedRow({ pieces, label }: { pieces: Piece[]; label: string }) {
   )
 }
 
+const statusBadge: Record<GameStatus, { label: string; className: string } | null> = {
+  playing: null,
+  check: { label: 'Check!', className: 'bg-orange-100 text-orange-700 border border-orange-300' },
+  checkmate: { label: 'Checkmate', className: 'bg-red-100 text-red-700 border border-red-300' },
+  stalemate: { label: 'Stalemate — Draw', className: 'bg-stone-100 text-stone-600 border border-stone-300' },
+  draw: { label: 'Draw', className: 'bg-stone-100 text-stone-600 border border-stone-300' },
+}
+
 export default function RightPanel({
-  gameState,
+  currentTurn,
+  lastMove,
+  capturedByWhite,
+  capturedByBlack,
+  gameStatus,
+  connectionStatus,
   selection,
   onConfirm,
   onCancel,
-  disabled,
 }: RightPanelProps) {
-  const { currentTurn, lastMove, capturedByWhite, capturedByBlack } = gameState
+  const isDisabled = connectionStatus === 'disconnected'
+  const isGameOver = gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw'
+  const badge = statusBadge[gameStatus]
 
-  const fromLabel = selection.from
-    ? squareLabel(selection.from.col, selection.from.row)
+  const selectionText = selection.piece && selection.from
+    ? `${pieceLabel(selection.piece)} ${selection.from}${selection.to ? ` → ${selection.to}` : ''}`
     : null
-  const toLabel = selection.to
-    ? squareLabel(selection.to.col, selection.to.row)
-    : null
 
-  const selectionText =
-    selection.piece && fromLabel
-      ? `${pieceLabel(selection.piece)} ${fromLabel}${toLabel ? ` → ${toLabel}` : ''}`
-      : null
-
-  const canConfirm = !!(selection.from && selection.to && selection.piece)
+  const canConfirm = !!(selection.from && selection.to && selection.piece) && !isDisabled && !isGameOver
 
   return (
-    <div className="flex flex-col gap-6 p-6 h-full overflow-y-auto">
+    <div className="flex flex-col gap-5 p-6 h-full overflow-y-auto">
+
+      {/* Status badge */}
+      {badge && (
+        <div className={`rounded-lg px-4 py-2.5 text-sm font-semibold text-center ${badge.className}`}>
+          {badge.label}
+        </div>
+      )}
+
       {/* Turn */}
       <section>
         <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Current Turn</div>
         <div className="flex items-center gap-2">
-          <div
-            className={`w-5 h-5 rounded-full border-2 ${
-              currentTurn === 'w'
-                ? 'bg-white border-stone-400'
-                : 'bg-stone-800 border-stone-600'
-            }`}
-          />
+          <div className={`w-5 h-5 rounded-full border-2 ${
+            currentTurn === 'w'
+              ? 'bg-white border-stone-400'
+              : 'bg-stone-800 border-stone-600'
+          }`} />
           <span className="font-medium text-stone-800">
-            {currentTurn === 'w' ? "White's turn" : "Black's turn"}
+            {isGameOver ? 'Game over' : currentTurn === 'w' ? "White's turn" : "Black's turn"}
           </span>
         </div>
       </section>
@@ -85,12 +101,10 @@ export default function RightPanel({
         {lastMove ? (
           <div>
             <div className="text-xl font-bold text-stone-800 tracking-tight font-mono">
-              {squareLabel(lastMove.from.charCodeAt(0) - 97, parseInt(lastMove.from[1]) - 1)} →{' '}
-              {squareLabel(lastMove.to.charCodeAt(0) - 97, parseInt(lastMove.to[1]) - 1)}
+              {lastMove.from} → {lastMove.to}
+              <span className="ml-2 text-sm font-normal text-stone-500">({lastMove.san})</span>
             </div>
-            <div className="text-sm text-stone-500 mt-1">
-              {pieceLabel(lastMove.piece)} moved to {lastMove.to}
-            </div>
+            <div className="text-sm text-stone-500 mt-1">{moveDescription(lastMove)}</div>
           </div>
         ) : (
           <span className="text-stone-400 text-sm">No moves yet</span>
@@ -109,10 +123,10 @@ export default function RightPanel({
       <div className="border-t border-stone-100" />
 
       {/* Move Control */}
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-3">
         <div className="text-xs uppercase tracking-widest text-stone-400">Move Control</div>
 
-        {disabled && (
+        {isDisabled && (
           <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
             Board not connected. Reconnect to send moves.
           </div>
@@ -124,27 +138,29 @@ export default function RightPanel({
               <span className="font-medium">Selected:</span>{' '}
               <span className="font-mono">{selectionText}</span>
             </span>
+          ) : isGameOver ? (
+            <span className="text-stone-400">Game has ended.</span>
           ) : (
             <span className="text-stone-400">Click a piece to select it</span>
           )}
         </div>
 
-        {!selection.from && (
+        {!isGameOver && (
           <p className="text-xs text-stone-400">
-            Select a piece on the board, then click the destination square.
+            {!selection.from
+              ? 'Select one of your pieces on the board.'
+              : !selection.to
+              ? 'Now click a destination square.'
+              : 'Press Confirm Move to execute.'}
           </p>
-        )}
-        {selection.from && !selection.to && (
-          <p className="text-xs text-stone-500">Now click a destination square.</p>
         )}
 
         <div className="flex gap-3">
           <button
             onClick={onConfirm}
-            disabled={!canConfirm || disabled}
+            disabled={!canConfirm}
             className="flex-1 py-2.5 rounded-lg font-medium text-sm transition-colors
-              bg-stone-800 text-white
-              hover:bg-stone-700
+              bg-stone-800 text-white hover:bg-stone-700
               disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Confirm Move
@@ -152,8 +168,8 @@ export default function RightPanel({
           <button
             onClick={onCancel}
             disabled={!selection.from}
-            className="flex-1 py-2.5 rounded-lg font-medium text-sm border border-stone-300 text-stone-700 transition-colors
-              hover:bg-stone-50
+            className="flex-1 py-2.5 rounded-lg font-medium text-sm border border-stone-300
+              text-stone-700 transition-colors hover:bg-stone-50
               disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Cancel

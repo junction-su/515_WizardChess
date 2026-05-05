@@ -1,12 +1,12 @@
-import { GameState } from '@/app/lib/chess'
+import { ConnectionStatus } from '@/app/lib/chess'
 
-const statusConfig = {
+const statusConfig: Record<ConnectionStatus, { dot: string; label: string }> = {
   connected: { dot: 'bg-green-500', label: 'Connected' },
   disconnected: { dot: 'bg-red-500', label: 'Disconnected' },
   syncing: { dot: 'bg-yellow-400 animate-pulse', label: 'Syncing…' },
 }
 
-export default function StatusHeader({ status }: { status: GameState['connectionStatus'] }) {
+export default function StatusHeader({ status }: { status: ConnectionStatus }) {
   const { dot, label } = statusConfig[status]
   return (
     <header className="flex items-center justify-between px-6 py-3 border-b border-stone-200 bg-white">

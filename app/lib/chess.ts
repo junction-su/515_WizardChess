@@ -1,66 +1,81 @@
-import { PieceType, PieceColor } from '@/app/components/ChessPiece'
+import { Chess, Square, PieceSymbol, Color } from 'chess.js'
 
-export interface Piece {
-  type: PieceType
-  color: PieceColor
+export type { Square, PieceSymbol, Color }
+
+export interface BoardPiece {
+  type: PieceSymbol
+  color: Color
+  square: Square
 }
 
-export type BoardState = (Piece | null)[][]
+export type GameStatus = 'playing' | 'check' | 'checkmate' | 'stalemate' | 'draw'
 
-export interface GameState {
-  board: BoardState
-  currentTurn: PieceColor
-  lastMove: { from: string; to: string; piece: Piece } | null
-  capturedByWhite: Piece[]
-  capturedByBlack: Piece[]
-  connectionStatus: 'connected' | 'disconnected' | 'syncing'
+export interface LastMove {
+  from: Square
+  to: Square
+  san: string
+  piece: BoardPiece
+  captured?: BoardPiece
 }
 
-export function squareLabel(col: number, row: number): string {
-  return `${'abcdefgh'[col]}${row + 1}`
+export interface LegalMoveSquare {
+  square: Square
+  isCapture: boolean
 }
 
-export function pieceLabel(piece: Piece): string {
-  const names: Record<PieceType, string> = {
-    K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn',
+export type ConnectionStatus = 'connected' | 'disconnected' | 'syncing'
+
+// chess.js board() returns an 8x8 array indexed [rank8..rank1][fileA..fileH]
+// We need to convert to our display format: row 0 = rank 1 (bottom)
+export function chessBoardToDisplay(chess: Chess): (BoardPiece | null)[][] {
+  const raw = chess.board() // row 0 = rank 8
+  // Reverse so display row 0 = rank 1 (white side, bottom)
+  return [...raw].reverse().map((row, rankIdx) =>
+    row.map((cell) =>
+      cell
+        ? { type: cell.type, color: cell.color, square: cell.square }
+        : null
+    )
+  )
+}
+
+export function getLegalMoves(chess: Chess, square: Square): LegalMoveSquare[] {
+  const moves = chess.moves({ square, verbose: true })
+  return moves.map((m) => ({
+    square: m.to as Square,
+    isCapture: m.flags.includes('c') || m.flags.includes('e'),
+  }))
+}
+
+export function getGameStatus(chess: Chess): GameStatus {
+  if (chess.isCheckmate()) return 'checkmate'
+  if (chess.isStalemate()) return 'stalemate'
+  if (chess.isDraw()) return 'draw'
+  if (chess.isCheck()) return 'check'
+  return 'playing'
+}
+
+export function squareToColRow(sq: Square): { col: number; row: number } {
+  const col = sq.charCodeAt(0) - 97 // a=0, h=7
+  const row = parseInt(sq[1]) - 1   // 1=0, 8=7
+  return { col, row }
+}
+
+export function colRowToSquare(col: number, row: number): Square {
+  return `${'abcdefgh'[col]}${row + 1}` as Square
+}
+
+export function pieceLabel(piece: BoardPiece): string {
+  const names: Record<PieceSymbol, string> = {
+    k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn',
   }
-  const colors: Record<PieceColor, string> = { w: 'White', b: 'Black' }
-  return `${colors[piece.color]} ${names[piece.type]}`
+  return `${piece.color === 'w' ? 'White' : 'Black'} ${names[piece.type]}`
 }
 
-function row(pieces: (Piece | null)[]): (Piece | null)[] {
-  return pieces
-}
-
-export const INITIAL_BOARD: BoardState = [
-  // rank 1 (row index 0, displayed as rank 1 at bottom)
-  row([
-    { type: 'R', color: 'w' }, { type: 'N', color: 'w' }, { type: 'B', color: 'w' },
-    { type: 'Q', color: 'w' }, { type: 'K', color: 'w' }, { type: 'B', color: 'w' },
-    { type: 'N', color: 'w' }, { type: 'R', color: 'w' },
-  ]),
-  // rank 2
-  row(Array(8).fill(null).map(() => ({ type: 'P' as PieceType, color: 'w' as PieceColor }))),
-  // ranks 3-6 empty
-  row(Array(8).fill(null)),
-  row(Array(8).fill(null)),
-  row(Array(8).fill(null)),
-  row(Array(8).fill(null)),
-  // rank 7
-  row(Array(8).fill(null).map(() => ({ type: 'P' as PieceType, color: 'b' as PieceColor }))),
-  // rank 8
-  row([
-    { type: 'R', color: 'b' }, { type: 'N', color: 'b' }, { type: 'B', color: 'b' },
-    { type: 'Q', color: 'b' }, { type: 'K', color: 'b' }, { type: 'B', color: 'b' },
-    { type: 'N', color: 'b' }, { type: 'R', color: 'b' },
-  ]),
-]
-
-export const MOCK_GAME_STATE: GameState = {
-  board: INITIAL_BOARD,
-  currentTurn: 'w',
-  lastMove: null,
-  capturedByWhite: [],
-  capturedByBlack: [],
-  connectionStatus: 'connected',
+export function moveDescription(move: LastMove): string {
+  const piece = pieceLabel(move.piece)
+  if (move.captured) {
+    return `${piece} captured ${pieceLabel(move.captured)} on ${move.to}`
+  }
+  return `${piece} moved from ${move.from} to ${move.to}`
 }
