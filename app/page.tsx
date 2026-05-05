@@ -240,6 +240,7 @@ export default function Home() {
           <ChessBoard
             board={board}
             selectedSquare={selection.from}
+            destinationSquare={selection.to}
             legalMoves={legalMoves}
             lastMove={lastMove}
             inCheck={gameStatus === 'check' || gameStatus === 'checkmate'}

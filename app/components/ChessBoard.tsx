@@ -7,6 +7,7 @@ import ChessPiece from './ChessPiece'
 interface ChessBoardProps {
   board: (BoardPiece | null)[][]
   selectedSquare: Square | null
+  destinationSquare: Square | null
   legalMoves: LegalMoveSquare[]
   lastMove: LastMove | null
   inCheck: boolean
@@ -17,6 +18,7 @@ interface ChessBoardProps {
 export default function ChessBoard({
   board,
   selectedSquare,
+  destinationSquare,
   legalMoves,
   lastMove,
   inCheck,
@@ -28,7 +30,6 @@ export default function ChessBoard({
   const isLastMove = (sq: Square) =>
     sq === lastMove?.from || sq === lastMove?.to
 
-  // Find king square for check highlight
   const kingSquare: Square | null = (() => {
     if (!inCheck) return null
     for (let r = 0; r < 8; r++) {
@@ -57,25 +58,34 @@ export default function ChessBoard({
           {rowPieces.map((piece, colIdx) => {
             const sq = colRowToSquare(colIdx, rowIdx)
             const light = isLight(rowIdx, colIdx)
-            const isSelected = sq === selectedSquare
+            const isFrom = sq === selectedSquare
+            const isTo = sq === destinationSquare
             const legalCapture = legalSquareMap.get(sq)
             const isLegal = legalSquareMap.has(sq)
             const isLastMoveSquare = isLastMove(sq)
             const isKingInCheck = sq === kingSquare
 
+            // Priority (high → low): check > from > to > legal > lastMove > base
             let bg = light ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'
 
-            if (isLastMoveSquare) bg = light ? 'bg-[#cdd16f]' : 'bg-[#aaa23a]'
+            // Last move: subtle gray
+            if (isLastMoveSquare) bg = light ? 'bg-[#d0cfc9]' : 'bg-[#9e9d98]'
 
-            // Legal move: empty square — olive/yellow tint
+            // Legal move: empty square — sky blue
             if (isLegal && legalCapture === false)
-              bg = light ? 'bg-[#d4e86e]' : 'bg-[#9fb032]'
+              bg = light ? 'bg-[#93c5fd]' : 'bg-[#3b82f6]'
 
-            // Legal move: capture square — red/orange tint
+            // Legal move: capture square — red
             if (isLegal && legalCapture === true)
-              bg = light ? 'bg-[#f0a07a]' : 'bg-[#c96030]'
+              bg = light ? 'bg-[#fca5a5]' : 'bg-[#ef4444]'
 
-            if (isSelected) bg = light ? 'bg-[#7fc97f]' : 'bg-[#4a9a4a]'
+            // Destination (to) — amber/orange, "pending confirm"
+            if (isTo) bg = light ? 'bg-[#fb923c]' : 'bg-[#ea580c]'
+
+            // Selected piece (from) — bright yellow/gold
+            if (isFrom) bg = light ? 'bg-[#fbbf24]' : 'bg-[#d97706]'
+
+            // King in check — red override
             if (isKingInCheck) bg = light ? 'bg-[#f87171]' : 'bg-[#dc2626]'
 
             const pieceAriaLabel = piece
@@ -83,7 +93,7 @@ export default function ChessBoard({
                   { k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn' }[piece.type]
                 }`
               : ''
-            const squareAriaLabel = `${sq}${pieceAriaLabel ? `, ${pieceAriaLabel}` : ''}${isSelected ? ', selected' : ''}${isLegal ? ', legal move' : ''}`
+            const squareAriaLabel = `${sq}${pieceAriaLabel ? `, ${pieceAriaLabel}` : ''}${isFrom ? ', selected' : ''}${isTo ? ', destination' : ''}${isLegal ? ', legal move' : ''}`
 
             return (
               <button
@@ -91,12 +101,13 @@ export default function ChessBoard({
                 role="gridcell"
                 className={`relative w-14 h-14 flex items-center justify-center transition-colors ${bg}
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
-                  ${isSelected ? 'ring-2 ring-inset ring-green-600' : ''}
+                  ${isFrom ? 'ring-2 ring-inset ring-yellow-500' : ''}
+                  ${isTo ? 'ring-2 ring-inset ring-orange-500' : ''}
                 `}
                 onClick={() => onSquareClick(sq, piece)}
                 aria-label={squareAriaLabel}
-                aria-selected={isSelected}
-                aria-pressed={isSelected}
+                aria-selected={isFrom || isTo}
+                aria-pressed={isFrom || isTo}
               >
                 {piece && (
                   <div className="relative z-10 pointer-events-none">
