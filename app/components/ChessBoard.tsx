@@ -95,7 +95,7 @@ export default function ChessBoard({
               <button
                 key={colIdx}
                 role="gridcell"
-                className={`relative w-14 h-14 flex items-center justify-center transition-colors ${bg}
+                className={`relative w-20 h-20 flex items-center justify-center transition-colors ${bg}
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
                   ${isFrom ? 'ring-2 ring-inset ring-yellow-500' : ''}
                   ${isTo ? 'ring-2 ring-inset ring-orange-500' : ''}
@@ -115,7 +115,7 @@ export default function ChessBoard({
                 )}
                 {piece && (
                   <div className="relative z-10 pointer-events-none">
-                    <ChessPiece type={piece.type} color={piece.color} size={44} />
+                    <ChessPiece type={piece.type} color={piece.color} size={62} />
                   </div>
                 )}
               </button>
@@ -127,7 +127,7 @@ export default function ChessBoard({
       {/* File labels */}
       <div className="flex ml-6" aria-hidden="true">
         {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((file) => (
-          <div key={file} className="w-14 text-center text-sm font-mono text-stone-500">
+          <div key={file} className="w-20 text-center text-sm font-mono text-stone-500">
             {file}
           </div>
         ))}
