@@ -45,7 +45,7 @@ export default function ChessBoard({
 
   return (
     // White card wrapper
-    <div className="bg-white rounded-3xl lg:rounded-[40px] p-5 sm:p-6 md:p-5 lg:p-8 xl:p-10 shadow-lg select-none">
+    <div className="bg-white rounded-3xl lg:rounded-[40px] pt-3 pl-3 pb-5 pr-5 sm:pb-6 sm:pr-6 md:pb-5 md:pr-5 lg:pb-8 lg:pr-8 xl:pb-10 xl:pr-10 shadow-lg select-none">
 
       {/* File labels — top (a–h) */}
       <div className="flex pl-5 sm:pl-6 mb-1" aria-hidden="true">
