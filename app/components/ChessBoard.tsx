@@ -130,7 +130,7 @@ export default function ChessBoard({
                       )}
                       {piece && (
                         <div className="absolute inset-[8%] pointer-events-none z-10">
-                          <ChessPiece type={piece.type} color={piece.color} />
+                          <ChessPiece type={piece.type} color={piece.color} onDarkSquare={!light} />
                         </div>
                       )}
                     </button>
