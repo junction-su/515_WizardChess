@@ -15,11 +15,9 @@ const pieceFile: Record<PieceSymbol, (color: Color) => string> = {
   p: () => '/pieces/pawn.svg',
 }
 
-// White pieces: invert the dark blue-grey SVG to cream/white, with warm shadow
-// Black pieces: keep natural (dark blue-grey reads well as black) with subtle darkening
 const filter: Record<Color, string> = {
-  w: 'brightness(0) invert(1) drop-shadow(1px 2px 1px rgba(90,60,10,0.55))',
-  b: 'brightness(0) drop-shadow(1px 1px 2px rgba(255,255,255,0.35))',
+  w: 'brightness(3.5) saturate(0.15) sepia(0.3) drop-shadow(1px 2px 1px rgba(80,50,0,0.4))',
+  b: 'brightness(0.45) contrast(1.4) drop-shadow(1px 1px 2px rgba(220,210,190,0.35))',
 }
 
 export default function ChessPiece({ type, color, size = 44 }: ChessPieceProps) {
