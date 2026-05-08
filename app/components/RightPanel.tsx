@@ -18,8 +18,69 @@ interface RightPanelProps {
   gameStatus: GameStatus
   connectionStatus: 'connected' | 'disconnected' | 'syncing'
   selection: MoveSelection
+  whiteTime: number
+  blackTime: number
   onConfirm: () => void
   onCancel: () => void
+}
+
+function fmtTime(secs: number) {
+  const m = Math.floor(secs / 60)
+  const s = String(secs % 60).padStart(2, '0')
+  return `${m}:${s}`
+}
+
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+function PlayerCard({
+  color,
+  isActive,
+  isGameOver,
+  time,
+}: {
+  color: 'w' | 'b'
+  isActive: boolean
+  isGameOver: boolean
+  time: number
+}) {
+  const label = color === 'w'
+    ? (isActive && !isGameOver ? "White's turn" : 'White')
+    : (isActive && !isGameOver ? "Black's turn" : 'Black')
+
+  return (
+    <div className={`flex-1 flex flex-col items-center gap-3 p-3 lg:p-4 rounded-lg border ${
+      isActive
+        ? 'bg-[#f5f9ff] border-[#4091ff]'
+        : 'border-[#c4c7ce]'
+    }`} style={{ borderWidth: '0.5px' }}>
+      <div className="flex flex-col items-center gap-1">
+        <div className={`w-[30px] h-[30px] ${!isActive ? 'opacity-40' : ''}`}>
+          <ChessPiece type="p" color={color} size={30} onDarkSquare={false} />
+        </div>
+        <span className={`text-sm lg:text-base font-medium whitespace-nowrap ${
+          isActive ? 'text-[#1c1917]' : 'text-[#979da9]'
+        }`}>
+          {label}
+        </span>
+      </div>
+      <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md ${
+        isActive ? 'bg-[#1d62bf]' : 'bg-[#edeff3]'
+      }`}>
+        <ClockIcon className={isActive ? 'text-white' : 'text-[#979da9]'} />
+        <span className={`text-base lg:text-lg font-medium tabular-nums ${
+          isActive ? 'text-white' : 'text-[#979da9]'
+        }`}>
+          {fmtTime(time)}
+        </span>
+      </div>
+    </div>
+  )
 }
 
 function CapturedRow({ pieces, label }: { pieces: BoardPiece[]; label: string }) {
@@ -47,6 +108,82 @@ const statusBadge: Record<GameStatus, { label: string; className: string } | nul
   draw: { label: 'Draw', className: 'bg-stone-100 text-stone-600 border border-stone-300' },
 }
 
+function MoveControlContent({
+  isDisabled,
+  isGameOver,
+  selectionText,
+  canConfirm,
+  hasFrom,
+  selection,
+  onConfirm,
+  onCancel,
+}: {
+  isDisabled: boolean
+  isGameOver: boolean
+  selectionText: string | null
+  canConfirm: boolean
+  hasFrom: boolean
+  selection: MoveSelection
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-xs uppercase tracking-widest text-stone-400">Move Control</div>
+
+      {isDisabled && (
+        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          Board not connected. Reconnect to send moves.
+        </div>
+      )}
+
+      <div className="bg-[#f6f8fa] rounded-lg px-4 h-[44px] text-sm text-stone-700 flex items-center">
+        {selectionText ? (
+          <span>
+            <span className="font-medium">Selected:</span>{' '}
+            <span className="font-mono">{selectionText}</span>
+          </span>
+        ) : isGameOver ? (
+          <span className="text-stone-400">Game has ended.</span>
+        ) : (
+          <span className="text-[#a8a29e]">Click a piece to select it</span>
+        )}
+      </div>
+
+      {!isGameOver && (
+        <p className="text-xs text-stone-400">
+          {!selection.from
+            ? 'Select one of your pieces on the board.'
+            : !selection.to
+            ? 'Now click a destination square.'
+            : 'Press Confirm Move to execute.'}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          onClick={onConfirm}
+          disabled={!canConfirm}
+          className="flex-1 h-[40px] rounded-lg font-medium text-[11px] transition-colors
+            bg-[#292524] text-white hover:bg-stone-700
+            disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Confirm Move
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={!hasFrom}
+          className="flex-1 h-[40px] rounded-lg font-medium text-[11px] border border-[#c4c7ce]
+            text-[#504944] transition-colors hover:bg-stone-50
+            disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function RightPanel({
   currentTurn,
   lastMove,
@@ -55,6 +192,8 @@ export default function RightPanel({
   gameStatus,
   connectionStatus,
   selection,
+  whiteTime,
+  blackTime,
   onConfirm,
   onCancel,
 }: RightPanelProps) {
@@ -68,114 +207,71 @@ export default function RightPanel({
 
   const canConfirm = !!(selection.from && selection.to && selection.piece) && !isDisabled && !isGameOver
 
+  const moveControlProps = {
+    isDisabled, isGameOver, selectionText, canConfirm,
+    hasFrom: !!selection.from, selection, onConfirm, onCancel,
+  }
+
   return (
-    <div className="flex flex-col gap-5 p-4 sm:p-6 md:h-full md:overflow-y-auto">
+    <>
+      {/* Scrollable content */}
+      <div className="flex flex-col gap-5 p-4 sm:p-6 md:h-full md:overflow-y-auto pb-36 md:pb-6">
 
-      {/* Status badge */}
-      {badge && (
-        <div className={`rounded-lg px-4 py-2.5 text-sm font-semibold text-center ${badge.className}`}>
-          {badge.label}
-        </div>
-      )}
+        {/* Status badge */}
+        {badge && (
+          <div className={`rounded-lg px-4 py-2.5 text-sm font-semibold text-center ${badge.className}`}>
+            {badge.label}
+          </div>
+        )}
 
-      {/* Turn */}
-      <section>
-        <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Current Turn</div>
-        <div className="flex items-center gap-2">
-          <div className={`w-5 h-5 rounded-full border-2 ${
-            currentTurn === 'w'
-              ? 'bg-white border-stone-400'
-              : 'bg-stone-800 border-stone-600'
-          }`} />
-          <span className="font-medium text-stone-800">
-            {isGameOver ? 'Game over' : currentTurn === 'w' ? "White's turn" : "Black's turn"}
-          </span>
-        </div>
-      </section>
+        {/* Current Turn — two player cards */}
+        <section>
+          <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Current Turn</div>
+          <div className="flex gap-2">
+            <PlayerCard color="w" isActive={currentTurn === 'w'} isGameOver={isGameOver} time={whiteTime} />
+            <PlayerCard color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver} time={blackTime} />
+          </div>
+        </section>
 
-      <div className="border-t border-stone-100" />
+        <div className="border-t border-stone-100" />
 
-      {/* Last Move */}
-      <section>
-        <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Last Move</div>
-        {lastMove ? (
-          <div>
-            <div className="text-xl font-bold text-stone-800 tracking-tight font-mono">
-              {lastMove.from} → {lastMove.to}
-              <span className="ml-2 text-sm font-normal text-stone-500">({lastMove.san})</span>
+        {/* Last Move */}
+        <section>
+          <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Last Move</div>
+          {lastMove ? (
+            <div>
+              <div className="text-xl font-bold text-stone-800 tracking-tight font-mono">
+                {lastMove.from} → {lastMove.to}
+                <span className="ml-2 text-sm font-normal text-stone-500">({lastMove.san})</span>
+              </div>
+              <div className="text-sm text-stone-500 mt-1">{moveDescription(lastMove)}</div>
             </div>
-            <div className="text-sm text-stone-500 mt-1">{moveDescription(lastMove)}</div>
-          </div>
-        ) : (
-          <span className="text-stone-400 text-sm">No moves yet</span>
-        )}
-      </section>
-
-      <div className="border-t border-stone-100" />
-
-      {/* Captured */}
-      <section className="flex flex-col gap-3">
-        <div className="text-xs uppercase tracking-widest text-stone-400">Captured Pieces</div>
-        <CapturedRow pieces={capturedByWhite} label="Captured by White" />
-        <CapturedRow pieces={capturedByBlack} label="Captured by Black" />
-      </section>
-
-      <div className="border-t border-stone-100" />
-
-      {/* Move Control */}
-      <section className="flex flex-col gap-3">
-        <div className="text-xs uppercase tracking-widest text-stone-400">Move Control</div>
-
-        {isDisabled && (
-          <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            Board not connected. Reconnect to send moves.
-          </div>
-        )}
-
-        <div className="bg-stone-50 rounded-lg px-4 py-3 text-sm text-stone-700 min-h-[48px] flex items-center">
-          {selectionText ? (
-            <span>
-              <span className="font-medium">Selected:</span>{' '}
-              <span className="font-mono">{selectionText}</span>
-            </span>
-          ) : isGameOver ? (
-            <span className="text-stone-400">Game has ended.</span>
           ) : (
-            <span className="text-stone-400">Click a piece to select it</span>
+            <span className="text-stone-400 text-sm">No moves yet</span>
           )}
-        </div>
+        </section>
 
-        {!isGameOver && (
-          <p className="text-xs text-stone-400">
-            {!selection.from
-              ? 'Select one of your pieces on the board.'
-              : !selection.to
-              ? 'Now click a destination square.'
-              : 'Press Confirm Move to execute.'}
-          </p>
-        )}
+        <div className="border-t border-stone-100" />
 
-        <div className="flex gap-3">
-          <button
-            onClick={onConfirm}
-            disabled={!canConfirm}
-            className="flex-1 py-2.5 rounded-lg font-medium text-sm transition-colors
-              bg-stone-800 text-white hover:bg-stone-700
-              disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            Confirm Move
-          </button>
-          <button
-            onClick={onCancel}
-            disabled={!selection.from}
-            className="flex-1 py-2.5 rounded-lg font-medium text-sm border border-stone-300
-              text-stone-700 transition-colors hover:bg-stone-50
-              disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
-        </div>
-      </section>
-    </div>
+        {/* Captured */}
+        <section className="flex flex-col gap-3">
+          <div className="text-xs uppercase tracking-widest text-stone-400">Captured Pieces</div>
+          <CapturedRow pieces={capturedByWhite} label="Captured by White" />
+          <CapturedRow pieces={capturedByBlack} label="Captured by Black" />
+        </section>
+
+        <div className="border-t border-stone-100" />
+
+        {/* Move Control — desktop only (mobile uses fixed footer below) */}
+        <section className="hidden md:block">
+          <MoveControlContent {...moveControlProps} />
+        </section>
+      </div>
+
+      {/* Move Control — mobile fixed bottom (hidden on md+) */}
+      <div className="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 px-4 pt-3 pb-4 z-40 md:hidden">
+        <MoveControlContent {...moveControlProps} />
+      </div>
+    </>
   )
 }
