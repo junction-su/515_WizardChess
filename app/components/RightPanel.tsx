@@ -59,7 +59,7 @@ function PlayerCard({
         ? 'bg-[#f5f9ff] border-[#4091ff]'
         : 'border-[#c4c7ce]'
     }`} style={{ borderWidth: '0.5px' }}>
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-0">
         <div className={`w-[52px] h-[52px] ${!isActive ? 'opacity-40' : ''}`}>
           <ChessPiece type="p" color={color} size={52} onDarkSquare={false} />
         </div>
