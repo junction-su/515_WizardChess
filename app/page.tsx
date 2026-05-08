@@ -45,6 +45,11 @@ function useChessGame() {
   const [blackTime, setBlackTime] = useState(300)
 
   useEffect(() => {
+    if (currentTurn === 'w') setWhiteTime(300)
+    else setBlackTime(300)
+  }, [currentTurn])
+
+  useEffect(() => {
     const active = gameStatus === 'playing' || gameStatus === 'check'
     if (!active) return
     const id = setInterval(() => {
@@ -246,11 +251,11 @@ export default function Home() {
           />
         </div>
 
-        {/* Divider: horizontal on mobile, vertical on desktop */}
-        <div className="h-px md:h-auto md:w-px bg-stone-200 shrink-0" />
+        {/* Divider: horizontal on mobile only */}
+        <div className="h-px md:hidden bg-stone-200 shrink-0" />
 
         {/* Right / bottom panel */}
-        <div className="w-full md:w-80 shrink-0 bg-white flex flex-col">
+        <div className="w-full md:w-80 shrink-0 bg-white flex flex-col md:rounded-[32px] md:border md:border-[#e0e4ec] md:my-[22px] md:mr-[22px] md:overflow-hidden">
           <RightPanel
             currentTurn={currentTurn}
             lastMove={lastMove}
