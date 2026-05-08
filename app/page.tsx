@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Chess, Square } from 'chess.js'
 import {
   BoardPiece,
@@ -41,34 +41,6 @@ function useChessGame() {
   const [legalMoves, setLegalMoves] = useState<LegalMoveSquare[]>([])
   const [announcement, setAnnouncement] = useState('')
   const [connectionStatus] = useState<ConnectionStatus>('connected')
-  const [whiteTime, setWhiteTime] = useState(300)
-  const [blackTime, setBlackTime] = useState(300)
-
-  useEffect(() => {
-    if (currentTurn === 'w') setWhiteTime(300)
-    else setBlackTime(300)
-  }, [currentTurn])
-
-  useEffect(() => {
-    const active = gameStatus === 'playing' || gameStatus === 'check'
-    if (!active) return
-    const id = setInterval(() => {
-      if (currentTurn === 'w') setWhiteTime(t => Math.max(0, t - 1))
-      else setBlackTime(t => Math.max(0, t - 1))
-    }, 1000)
-    return () => clearInterval(id)
-  }, [gameStatus, currentTurn])
-
-  useEffect(() => {
-    const active = gameStatus === 'playing' || gameStatus === 'check'
-    if (!active) return
-    const activeTime = currentTurn === 'w' ? whiteTime : blackTime
-    if (activeTime > 0) return
-    const id = setTimeout(() => {
-      setCurrentTurn(t => t === 'w' ? 'b' : 'w')
-    }, 1000)
-    return () => clearTimeout(id)
-  }, [currentTurn, whiteTime, blackTime, gameStatus])
 
   const syncFromChess = useCallback(() => {
     const chess = chessRef.current
@@ -87,8 +59,6 @@ function useChessGame() {
     setGameStatus('playing')
     setSelection(EMPTY_SELECTION)
     setLegalMoves([])
-    setWhiteTime(300)
-    setBlackTime(300)
     setAnnouncement('Game restarted.')
   }, [])
 
@@ -102,8 +72,6 @@ function useChessGame() {
     setGameStatus(getGameStatus(chessRef.current))
     setSelection(EMPTY_SELECTION)
     setLegalMoves([])
-    setWhiteTime(300)
-    setBlackTime(300)
     setAnnouncement("Demo loaded: Fool's Mate. White is in checkmate.")
   }, [])
 
@@ -170,7 +138,6 @@ function useChessGame() {
   return {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
-    whiteTime, blackTime,
     selectSquare, confirmMove, cancelSelection, restart, loadDemo,
   }
 }
@@ -230,7 +197,6 @@ export default function Home() {
   const {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
-    whiteTime, blackTime,
     selectSquare, confirmMove, cancelSelection, restart, loadDemo,
   } = useChessGame()
 
@@ -275,8 +241,6 @@ export default function Home() {
             gameStatus={gameStatus}
             connectionStatus={connectionStatus}
             selection={selection}
-            whiteTime={whiteTime}
-            blackTime={blackTime}
             onConfirm={confirmMove}
             onCancel={cancelSelection}
           />

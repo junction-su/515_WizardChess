@@ -18,36 +18,18 @@ interface RightPanelProps {
   gameStatus: GameStatus
   connectionStatus: 'connected' | 'disconnected' | 'syncing'
   selection: MoveSelection
-  whiteTime: number
-  blackTime: number
   onConfirm: () => void
   onCancel: () => void
-}
-
-function fmtTime(secs: number) {
-  const m = Math.floor(secs / 60)
-  const s = String(secs % 60).padStart(2, '0')
-  return `${m}:${s}`
-}
-
-function ClockIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2a8 8 0 1 1 0 16A8 8 0 0 1 12 4zm0 2a1 1 0 0 0-1 1v5.586l-2.707 2.707a1 1 0 1 0 1.414 1.414l3-3A1 1 0 0 0 13 13V7a1 1 0 0 0-1-1z" />
-    </svg>
-  )
 }
 
 function PlayerCard({
   color,
   isActive,
   isGameOver,
-  time,
 }: {
   color: 'w' | 'b'
   isActive: boolean
   isGameOver: boolean
-  time: number
 }) {
   const label = color === 'w'
     ? (isActive && !isGameOver ? "White's turn" : 'White')
@@ -67,16 +49,6 @@ function PlayerCard({
           isActive ? 'text-[#1c1917]' : 'text-[#979da9]'
         }`}>
           {label}
-        </span>
-      </div>
-      <div className={`flex items-center gap-4 px-2 py-[6px] rounded-[6px] ${
-        isActive ? 'bg-[#1d62bf]' : 'bg-[#edeff3]'
-      }`}>
-        <ClockIcon className={isActive ? 'text-white' : 'text-[#979da9]'} />
-        <span className={`text-[18px] font-medium tabular-nums ${
-          isActive ? 'text-white' : 'text-[#979da9]'
-        }`}>
-          {fmtTime(time)}
         </span>
       </div>
     </div>
@@ -192,8 +164,6 @@ export default function RightPanel({
   gameStatus,
   connectionStatus,
   selection,
-  whiteTime,
-  blackTime,
   onConfirm,
   onCancel,
 }: RightPanelProps) {
@@ -228,8 +198,8 @@ export default function RightPanel({
         <section>
           <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Current Turn</div>
           <div className="flex gap-2">
-            <PlayerCard color="w" isActive={currentTurn === 'w'} isGameOver={isGameOver} time={whiteTime} />
-            <PlayerCard color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver} time={blackTime} />
+            <PlayerCard color="w" isActive={currentTurn === 'w'} isGameOver={isGameOver} />
+            <PlayerCard color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver} />
           </div>
         </section>
 
