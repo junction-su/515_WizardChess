@@ -7,12 +7,12 @@ interface ChessPieceProps {
 }
 
 const pieceFile: Record<PieceSymbol, (color: Color) => string> = {
-  k: () => '/pieces/king.svg',
-  q: () => '/pieces/queen.svg',
-  r: () => '/pieces/rook.svg',
-  b: () => '/pieces/bishop.svg',
-  n: (color) => color === 'w' ? '/pieces/knight_white.svg' : '/pieces/knight_black.svg',
-  p: () => '/pieces/pawn.svg',
+  k: () => '/pieces/King.svg',
+  q: () => '/pieces/Queen.svg',
+  r: () => '/pieces/Rook.svg',
+  b: () => '/pieces/Bishop.svg',
+  n: (color) => color === 'w' ? '/pieces/Knight_1.svg' : '/pieces/Knight_2.svg',
+  p: () => '/pieces/Pawn.svg',
 }
 
 const filter: Record<Color, string> = {
