@@ -59,6 +59,17 @@ function useChessGame() {
     return () => clearInterval(id)
   }, [gameStatus, currentTurn])
 
+  useEffect(() => {
+    const active = gameStatus === 'playing' || gameStatus === 'check'
+    if (!active) return
+    const activeTime = currentTurn === 'w' ? whiteTime : blackTime
+    if (activeTime > 0) return
+    const id = setTimeout(() => {
+      setCurrentTurn(t => t === 'w' ? 'b' : 'w')
+    }, 1000)
+    return () => clearTimeout(id)
+  }, [currentTurn, whiteTime, blackTime, gameStatus])
+
   const syncFromChess = useCallback(() => {
     const chess = chessRef.current
     setBoard(chessBoardToDisplay(chess))
