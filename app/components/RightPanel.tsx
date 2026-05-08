@@ -69,7 +69,7 @@ export default function RightPanel({
   const canConfirm = !!(selection.from && selection.to && selection.piece) && !isDisabled && !isGameOver
 
   return (
-    <div className="flex flex-col gap-5 p-6 h-full overflow-y-auto">
+    <div className="flex flex-col gap-5 p-4 sm:p-6 md:h-full md:overflow-y-auto">
 
       {/* Status badge */}
       {badge && (

@@ -201,15 +201,16 @@ export default function Home() {
   } = useChessGame()
 
   return (
-    <div className="flex flex-col h-screen bg-[#f5f2ed]">
+    <div className="flex flex-col min-h-screen md:h-screen bg-[#f5f2ed]">
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
 
       <StatusHeader status={connectionStatus} />
 
-      <main className="flex flex-1 overflow-hidden">
-        <div className="relative flex flex-1 items-center justify-center p-8">
+      <main className="flex flex-col md:flex-row md:flex-1 md:overflow-hidden">
+        {/* Board area */}
+        <div className="relative flex items-center justify-center p-3 sm:p-6 md:flex-1 md:p-4 lg:p-6 xl:p-8">
           <ChessBoard
             board={board}
             selectedSquare={selection.from}
@@ -227,9 +228,11 @@ export default function Home() {
           />
         </div>
 
-        <div className="w-px bg-stone-200 shrink-0" />
+        {/* Divider: horizontal on mobile, vertical on desktop */}
+        <div className="h-px md:h-auto md:w-px bg-stone-200 shrink-0" />
 
-        <div className="w-80 shrink-0 bg-white flex flex-col">
+        {/* Right / bottom panel */}
+        <div className="w-full md:w-80 shrink-0 bg-white flex flex-col">
           <RightPanel
             currentTurn={currentTurn}
             lastMove={lastMove}

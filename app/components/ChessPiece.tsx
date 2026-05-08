@@ -3,7 +3,7 @@ import { PieceSymbol, Color } from 'chess.js'
 interface ChessPieceProps {
   type: PieceSymbol
   color: Color
-  size?: number
+  size?: number  // fixed px; omit to fill parent container
 }
 
 const pieceFile: Record<PieceSymbol, (color: Color) => string> = {
@@ -20,15 +20,18 @@ const filter: Record<Color, string> = {
   b: 'brightness(0.6) contrast(1.25) drop-shadow(1px 1px 2px rgba(220,210,190,0.35))',
 }
 
-export default function ChessPiece({ type, color, size = 44 }: ChessPieceProps) {
+export default function ChessPiece({ type, color, size }: ChessPieceProps) {
   return (
     <img
       src={pieceFile[type](color)}
       alt=""
       aria-hidden="true"
-      width={size}
-      height={size}
-      style={{ filter: filter[color], display: 'block' }}
+      style={{
+        filter: filter[color],
+        display: 'block',
+        width: size ?? '100%',
+        height: size ?? '100%',
+      }}
       draggable={false}
     />
   )
