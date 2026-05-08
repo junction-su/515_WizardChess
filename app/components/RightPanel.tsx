@@ -32,8 +32,8 @@ function fmtTime(secs: number) {
 
 function ClockIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2a8 8 0 1 1 0 16A8 8 0 0 1 12 4zm0 2a1 1 0 0 0-1 1v5.586l-2.707 2.707a1 1 0 1 0 1.414 1.414l3-3A1 1 0 0 0 13 13V7a1 1 0 0 0-1-1z" />
     </svg>
   )
 }
@@ -54,7 +54,7 @@ function PlayerCard({
     : (isActive && !isGameOver ? "Black's turn" : 'Black')
 
   return (
-    <div className={`flex-1 flex flex-col items-center gap-3 p-3 lg:p-4 rounded-lg border ${
+    <div className={`flex-1 flex flex-col items-center gap-2 md:gap-4 p-2 md:p-4 rounded-lg border ${
       isActive
         ? 'bg-[#f5f9ff] border-[#4091ff]'
         : 'border-[#c4c7ce]'
@@ -63,17 +63,17 @@ function PlayerCard({
         <div className={`w-[30px] h-[30px] ${!isActive ? 'opacity-40' : ''}`}>
           <ChessPiece type="p" color={color} size={30} onDarkSquare={false} />
         </div>
-        <span className={`text-sm lg:text-base font-medium whitespace-nowrap ${
+        <span className={`text-base font-medium whitespace-nowrap ${
           isActive ? 'text-[#1c1917]' : 'text-[#979da9]'
         }`}>
           {label}
         </span>
       </div>
-      <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md ${
+      <div className={`flex items-center gap-4 px-2 py-[6px] rounded-[6px] ${
         isActive ? 'bg-[#1d62bf]' : 'bg-[#edeff3]'
       }`}>
         <ClockIcon className={isActive ? 'text-white' : 'text-[#979da9]'} />
-        <span className={`text-base lg:text-lg font-medium tabular-nums ${
+        <span className={`text-[18px] font-medium tabular-nums ${
           isActive ? 'text-white' : 'text-[#979da9]'
         }`}>
           {fmtTime(time)}
