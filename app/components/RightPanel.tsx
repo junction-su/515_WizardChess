@@ -60,8 +60,8 @@ function PlayerCard({
         : 'border-[#c4c7ce]'
     }`} style={{ borderWidth: '0.5px' }}>
       <div className="flex flex-col items-center gap-1">
-        <div className={`w-[30px] h-[30px] ${!isActive ? 'opacity-40' : ''}`}>
-          <ChessPiece type="p" color={color} size={30} onDarkSquare={false} />
+        <div className={`w-[52px] h-[52px] ${!isActive ? 'opacity-40' : ''}`}>
+          <ChessPiece type="p" color={color} size={52} onDarkSquare={false} />
         </div>
         <span className={`text-base font-medium whitespace-nowrap ${
           isActive ? 'text-[#1c1917]' : 'text-[#979da9]'
