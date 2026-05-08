@@ -41,96 +41,103 @@ export default function ChessBoard({
     return null
   })()
 
-  const isLight = (r: number, c: number) => (r + c) % 2 === 0
+  const isLight = (r: number, c: number) => (r + c) % 2 !== 0
 
   return (
-    <div className="flex flex-col-reverse select-none" role="grid" aria-label="Chess board">
-      {board.map((rowPieces, rowIdx) => (
-        <div key={rowIdx} className="flex items-center" role="row">
-          {/* Rank label */}
-          <div
-            className="w-5 sm:w-6 text-center text-xs sm:text-sm font-mono text-stone-500 shrink-0"
-            aria-hidden="true"
-          >
-            {rowIdx + 1}
-          </div>
+    // White card wrapper
+    <div className="bg-white rounded-3xl lg:rounded-[40px] p-5 sm:p-6 md:p-5 lg:p-8 xl:p-10 shadow-lg select-none">
 
-          {rowPieces.map((piece, colIdx) => {
-            const sq = colRowToSquare(colIdx, rowIdx)
-            const light = isLight(rowIdx, colIdx)
-            const isFrom = sq === selectedSquare
-            const isTo = sq === destinationSquare
-            const legalCapture = legalSquareMap.get(sq)
-            const isLegal = legalSquareMap.has(sq)
-            const isLastMoveSquare = isLastMove(sq)
-            const isKingInCheck = sq === kingSquare
-
-            let bg = light ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'
-
-            // Legal move: empty square — sky blue
-            if (isLegal && legalCapture === false)
-              bg = light ? 'bg-[#93c5fd]' : 'bg-[#3b82f6]'
-
-            // Legal move: capture square — red
-            if (isLegal && legalCapture === true)
-              bg = light ? 'bg-[#fca5a5]' : 'bg-[#ef4444]'
-
-            // Destination (to) — amber/orange, "pending confirm"
-            if (isTo) bg = light ? 'bg-[#fb923c]' : 'bg-[#ea580c]'
-
-            // Selected piece (from) — bright yellow/gold
-            if (isFrom) bg = light ? 'bg-[#fbbf24]' : 'bg-[#d97706]'
-
-            // King in check — red override
-            if (isKingInCheck) bg = light ? 'bg-[#f87171]' : 'bg-[#dc2626]'
-
-            const pieceAriaLabel = piece
-              ? `${piece.color === 'w' ? 'White' : 'Black'} ${
-                  { k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn' }[piece.type]
-                }`
-              : ''
-            const squareAriaLabel = `${sq}${pieceAriaLabel ? `, ${pieceAriaLabel}` : ''}${isFrom ? ', selected' : ''}${isTo ? ', destination' : ''}${isLegal ? ', legal move' : ''}`
-
-            return (
-              <button
-                key={colIdx}
-                role="gridcell"
-                className={`relative w-10 h-10 sm:w-14 sm:h-14 md:w-12 md:h-12 lg:w-16 lg:h-16 xl:w-20 xl:h-20 2xl:w-24 2xl:h-24 flex items-center justify-center transition-colors ${bg}
-                  focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
-                  ${isFrom ? 'ring-2 ring-inset ring-yellow-500' : ''}
-                  ${isTo ? 'ring-2 ring-inset ring-orange-500' : ''}
-                `}
-                onClick={() => onSquareClick(sq, piece)}
-                aria-label={squareAriaLabel}
-                aria-selected={isFrom || isTo}
-                aria-pressed={isFrom || isTo}
-              >
-                {/* Last move: dotted border overlay */}
-                {isLastMoveSquare && (
-                  <div
-                    className="absolute inset-0 pointer-events-none z-20"
-                    style={{ border: '2px dashed rgba(80,60,20,0.45)' }}
-                    aria-hidden="true"
-                  />
-                )}
-                {piece && (
-                  <div className="absolute inset-[8%] pointer-events-none z-10">
-                    <ChessPiece type={piece.type} color={piece.color} />
-                  </div>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      ))}
-
-      {/* File labels */}
-      <div className="flex ml-5 sm:ml-6" aria-hidden="true">
+      {/* File labels — top (a–h) */}
+      <div className="flex pl-5 sm:pl-6 mb-1" aria-hidden="true">
         {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((file) => (
-          <div key={file} className="w-10 sm:w-14 md:w-12 lg:w-16 xl:w-20 2xl:w-24 text-center text-xs sm:text-sm font-mono text-stone-500">
+          <div
+            key={file}
+            className="w-10 sm:w-14 md:w-12 lg:w-16 xl:w-20 2xl:w-24 text-center text-xs sm:text-sm font-mono text-[#78716c]"
+          >
             {file}
           </div>
         ))}
+      </div>
+
+      {/* Board: rank labels + squares (overflow-hidden for inner corner radius) */}
+      <div
+        className="overflow-hidden rounded-2xl"
+        role="grid"
+        aria-label="Chess board"
+      >
+        <div className="flex flex-col-reverse">
+          {board.map((rowPieces, rowIdx) => (
+            <div key={rowIdx} className="flex items-stretch" role="row">
+              {/* Rank label */}
+              <div
+                className="w-5 sm:w-6 bg-white text-center text-xs sm:text-sm font-mono text-[#78716c] shrink-0 flex items-center justify-center"
+                aria-hidden="true"
+              >
+                {rowIdx + 1}
+              </div>
+
+              {rowPieces.map((piece, colIdx) => {
+                const sq = colRowToSquare(colIdx, rowIdx)
+                const light = isLight(rowIdx, colIdx)
+                const isFrom = sq === selectedSquare
+                const isTo = sq === destinationSquare
+                const legalCapture = legalSquareMap.get(sq)
+                const isLegal = legalSquareMap.has(sq)
+                const isLastMoveSquare = isLastMove(sq)
+                const isKingInCheck = sq === kingSquare
+
+                // Base: navy (#013c8c) / light-grey (#e4e7ec)
+                let bg = light ? 'bg-[#e4e7ec]' : 'bg-[#013c8c]'
+
+                if (isLegal && legalCapture === false)
+                  bg = light ? 'bg-[#bfdbfe]' : 'bg-[#1d4ed8]'
+
+                if (isLegal && legalCapture === true)
+                  bg = light ? 'bg-[#fca5a5]' : 'bg-[#ef4444]'
+
+                if (isTo) bg = light ? 'bg-[#fb923c]' : 'bg-[#ea580c]'
+                if (isFrom) bg = light ? 'bg-[#fbbf24]' : 'bg-[#d97706]'
+                if (isKingInCheck) bg = light ? 'bg-[#f87171]' : 'bg-[#dc2626]'
+
+                const pieceAriaLabel = piece
+                  ? `${piece.color === 'w' ? 'White' : 'Black'} ${
+                      { k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn' }[piece.type]
+                    }`
+                  : ''
+                const squareAriaLabel = `${sq}${pieceAriaLabel ? `, ${pieceAriaLabel}` : ''}${isFrom ? ', selected' : ''}${isTo ? ', destination' : ''}${isLegal ? ', legal move' : ''}`
+
+                return (
+                  <button
+                    key={colIdx}
+                    role="gridcell"
+                    className={`relative w-10 h-10 sm:w-14 sm:h-14 md:w-12 md:h-12 lg:w-16 lg:h-16 xl:w-20 xl:h-20 2xl:w-24 2xl:h-24 flex items-center justify-center transition-colors ${bg}
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400
+                      ${isFrom ? 'ring-2 ring-inset ring-yellow-400' : ''}
+                      ${isTo ? 'ring-2 ring-inset ring-orange-400' : ''}
+                    `}
+                    onClick={() => onSquareClick(sq, piece)}
+                    aria-label={squareAriaLabel}
+                    aria-selected={isFrom || isTo}
+                    aria-pressed={isFrom || isTo}
+                  >
+                    {isLastMoveSquare && (
+                      <div
+                        className="absolute inset-0 pointer-events-none z-20"
+                        style={{ border: '2px dashed rgba(0,0,0,0.25)' }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    {piece && (
+                      <div className="absolute inset-[8%] pointer-events-none z-10">
+                        <ChessPiece type={piece.type} color={piece.color} />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

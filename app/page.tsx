@@ -201,7 +201,7 @@ export default function Home() {
   } = useChessGame()
 
   return (
-    <div className="flex flex-col min-h-screen md:h-screen bg-[#f5f2ed]">
+    <div className="flex flex-col min-h-screen md:h-screen bg-[#edeff3]">
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
