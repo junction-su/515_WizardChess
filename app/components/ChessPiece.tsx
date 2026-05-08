@@ -16,8 +16,8 @@ const pieceFile: Record<PieceSymbol, (color: Color) => string> = {
 }
 
 const filter: Record<Color, string> = {
-  w: 'brightness(1.9) contrast(0.85) saturate(0.2) sepia(0.55) drop-shadow(1px 2px 1px rgba(80,50,0,0.4))',
-  b: 'brightness(0.45) contrast(1.75) drop-shadow(1px 1px 2px rgba(220,210,190,0.35))',
+  w: 'brightness(1.65) contrast(0.9) saturate(0.2) sepia(0.55) drop-shadow(1px 2px 1px rgba(80,50,0,0.4))',
+  b: 'brightness(0.6) contrast(1.25) drop-shadow(1px 1px 2px rgba(220,210,190,0.35))',
 }
 
 export default function ChessPiece({ type, color, size = 44 }: ChessPieceProps) {
