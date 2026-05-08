@@ -54,7 +54,7 @@ function PlayerCard({
     : (isActive && !isGameOver ? "Black's turn" : 'Black')
 
   return (
-    <div className={`flex-1 flex flex-col items-center gap-2 md:gap-4 p-2 md:p-4 rounded-lg border ${
+    <div className={`flex-1 flex flex-col items-center gap-2 md:gap-4 pt-1 px-2 pb-2 md:pt-2 md:px-4 md:pb-4 rounded-lg border ${
       isActive
         ? 'bg-[#f5f9ff] border-[#4091ff]'
         : 'border-[#c4c7ce]'
