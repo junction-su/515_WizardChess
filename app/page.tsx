@@ -33,7 +33,7 @@ export default function IntroPage() {
     // regardless of the body's white background in globals.css
     <div
       className="fixed inset-0 overflow-hidden"
-      style={{ background: 'linear-gradient(to bottom, #061e3f 0%, #0f4fa5 100%)' }}
+      style={{ background: 'linear-gradient(180deg, #061E3F 27.57%, #0F4FA5 145.98%)' }}
     >
       {/* ── Background texture overlays (place files in public/intro/) ── */}
       {/* bg-bottom.png : chess-pattern texture, mix-blend-multiply, opacity 40% */}
@@ -66,7 +66,7 @@ export default function IntroPage() {
       >
         <video
           autoPlay loop muted playsInline
-          className="h-[90vh] w-auto object-contain"
+          className="h-[56vw] w-auto object-contain"
         >
           <source src="/intro/piece-knight.webm" type="video/webm" />
           <source src="/intro/piece-knight.mp4" type="video/mp4" />
@@ -86,7 +86,7 @@ export default function IntroPage() {
       >
         <video
           autoPlay loop muted playsInline
-          className="h-[78vh] w-auto object-contain"
+          className="h-[49vw] w-auto object-contain"
         >
           <source src="/intro/piece-queen.webm" type="video/webm" />
           <source src="/intro/piece-queen.mp4" type="video/mp4" />
