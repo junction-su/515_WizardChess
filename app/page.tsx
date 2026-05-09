@@ -42,7 +42,7 @@ export default function IntroPage() {
         src="/intro/bg-bottom.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-0 h-[90%] w-auto mix-blend-multiply opacity-40"
+        className="pointer-events-none absolute bottom-0 right-0 h-[90%] w-auto mix-blend-overlay opacity-40"
       />
       {/* bg-topleft.png : top-left vignette overlay */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -50,7 +50,7 @@ export default function IntroPage() {
         src="/intro/bg-topleft.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 h-[73%] w-[46%] mix-blend-multiply"
+        className="pointer-events-none absolute left-0 top-0 h-[73%] w-[46%] mix-blend-overlay opacity-60"
       />
 
       {/* ── Left: knight webm ── */}
@@ -66,7 +66,8 @@ export default function IntroPage() {
       >
         <video
           autoPlay loop muted playsInline
-          className="h-[56vw] w-auto object-contain"
+          style={{ height: 'min(90vh, 56vw)' }}
+          className="w-auto object-contain"
         >
           <source src="/intro/piece-knight.webm" type="video/webm" />
           <source src="/intro/piece-knight.mp4" type="video/mp4" />
@@ -86,7 +87,8 @@ export default function IntroPage() {
       >
         <video
           autoPlay loop muted playsInline
-          className="h-[49vw] w-auto object-contain"
+          style={{ height: 'min(78vh, 49vw)' }}
+          className="w-auto object-contain"
         >
           <source src="/intro/piece-queen.webm" type="video/webm" />
           <source src="/intro/piece-queen.mp4" type="video/mp4" />
