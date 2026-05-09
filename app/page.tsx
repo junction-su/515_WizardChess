@@ -29,73 +29,91 @@ export default function IntroPage() {
   }
 
   return (
+    // fixed inset-0 ensures the gradient covers the entire viewport
+    // regardless of the body's white background in globals.css
     <div
-      className="relative min-h-screen overflow-hidden"
+      className="fixed inset-0 overflow-hidden"
       style={{ background: 'linear-gradient(to bottom, #061e3f 0%, #0f4fa5 100%)' }}
     >
-      {/* Background chess-pattern texture (subtle repeat) */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-multiply"
-        style={{
-          backgroundImage: `url('/pieces/King.svg'), url('/pieces/Queen.svg'), url('/pieces/Rook.svg')`,
-          backgroundSize: '220px, 180px, 160px',
-          backgroundPosition: '5% 20%, 85% 70%, 60% 10%',
-          backgroundRepeat: 'no-repeat',
-          filter: 'brightness(10)',
-        }}
+      {/* ── Background texture overlays (place files in public/intro/) ── */}
+      {/* bg-bottom.png : chess-pattern texture, mix-blend-multiply, opacity 40% */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/intro/bg-bottom.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-[12%] h-[90%] w-auto mix-blend-multiply opacity-40"
+      />
+      {/* bg-topleft.png : top-left vignette overlay */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/intro/bg-topleft.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 h-[73%] w-[46%] mix-blend-multiply"
       />
 
-      {/* Left knight — 3D webm (rotated, bleeds off left edge) */}
+      {/* ── Left: knight webm ── */}
+      {/* Figma: container left=-555px (of 1440), height=1073, rotated 9.28deg */}
       <div
-        className="pointer-events-none absolute bottom-0 left-[-8%]"
-        style={{ transform: 'rotate(9.28deg)', transformOrigin: 'bottom left' }}
+        className="pointer-events-none absolute"
+        style={{
+          left: '-15%',
+          bottom: '-2%',
+          transform: 'rotate(9.28deg)',
+          transformOrigin: 'bottom center',
+        }}
       >
         <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="h-[88vh] max-h-[760px] w-auto object-contain"
+          autoPlay loop muted playsInline
+          className="h-[90vh] w-auto object-contain"
         >
           <source src="/intro/piece-knight.webm" type="video/webm" />
           <source src="/intro/piece-knight.mp4" type="video/mp4" />
         </video>
       </div>
 
-      {/* Right queen — 3D webm (inverted, rotated, bleeds off top-right) */}
+      {/* ── Right: queen webm (flipped vertically, bleeds off top-right) ── */}
+      {/* Figma: container left=652px (of 1440), top=-177px, scaleY(-1), rotate 2.2deg */}
       <div
-        className="pointer-events-none absolute right-[-6%] top-[-18%]"
-        style={{ transform: 'rotate(2.2deg) scaleY(-1)', transformOrigin: 'top right' }}
+        className="pointer-events-none absolute"
+        style={{
+          right: '-22%',
+          top: '-18%',
+          transform: 'rotate(2.2deg) scaleY(-1)',
+          transformOrigin: 'center',
+        }}
       >
         <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="h-[76vh] max-h-[660px] w-auto object-contain"
+          autoPlay loop muted playsInline
+          className="h-[78vh] w-auto object-contain"
         >
           <source src="/intro/piece-queen.webm" type="video/webm" />
           <source src="/intro/piece-queen.mp4" type="video/mp4" />
         </video>
       </div>
 
-      {/* Center content */}
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center">
+      {/* ── Center content ── */}
+      <div className="relative z-10 flex h-full flex-col items-center justify-center">
 
-        {/* Title block */}
+        {/* Title block with magic-effect behind */}
         <div className="relative flex flex-col items-center">
-          {/* Magic effect swirl — behind title */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-70 w-[700px] h-[350px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/intro/magic-effect.svg" alt="" className="size-full object-cover" />
-          </div>
 
-          {/* Team DA label */}
-          <p className="relative mb-1 text-[16px] font-thin tracking-[0.18em] text-white/70">
+          {/* Magic swirl effect — place magic-effect.png in public/intro/ */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/intro/magic-effect.png"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] object-cover opacity-70"
+          />
+
+          {/* Team DA */}
+          <p className="relative text-[16px] font-thin tracking-[0.18em] text-white/70 mb-1">
             Team DA
           </p>
 
-          {/* Main title */}
+          {/* Wizarding Chess */}
           <h1
             className={`${cinzel.className} relative text-center text-[100px] font-bold leading-[1.05] text-white`}
             style={{ textShadow: '0px 0px 5.5px rgba(6, 26, 51, 0.38)' }}
@@ -115,7 +133,7 @@ export default function IntroPage() {
             rounded-[8px] px-[16px] py-[14px]
             text-[16px] font-medium transition-all duration-200
             ${status === 'idle'
-              ? 'border border-[#004cb2] bg-[#071c38] text-white hover:border-white hover:bg-white hover:text-[#013c8c]'
+              ? 'border border-[#004cb2] bg-[#071c38] text-white hover:bg-white hover:text-[#013c8c] hover:border-white'
               : status === 'connecting'
               ? 'cursor-not-allowed border border-[#004cb2] bg-[#071c38] text-white/60'
               : 'border border-emerald-500 bg-emerald-600 text-white'
@@ -123,21 +141,12 @@ export default function IntroPage() {
           `}
         >
           {status === 'idle' && 'Connect'}
-          {status === 'connecting' && (
-            <>
-              <Spinner />
-              Connecting...
-            </>
-          )}
+          {status === 'connecting' && <><Spinner />Connecting...</>}
           {status === 'done' && '✓  Done!'}
         </button>
 
-        {/* Status message */}
-        <p
-          className={`mt-4 text-xs text-white/40 transition-opacity duration-300 ${
-            status === 'idle' ? 'opacity-0' : 'opacity-100'
-          }`}
-        >
+        {/* Status hint */}
+        <p className={`mt-4 text-xs text-white/40 transition-opacity duration-300 ${status === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
           {status === 'connecting' && 'Establishing connection with the board…'}
           {status === 'done' && 'Board connected. Launching game…'}
           {status === 'idle' && ' '}
