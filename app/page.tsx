@@ -59,7 +59,7 @@ export default function IntroPage() {
         className="pointer-events-none absolute"
         style={{
           left: '-38%',
-          bottom: '-2%',
+          bottom: '-8%',
           transform: 'rotate(9.28deg)',
           transformOrigin: 'bottom center',
         }}
@@ -79,7 +79,7 @@ export default function IntroPage() {
       <div
         className="pointer-events-none absolute"
         style={{
-          right: '-22%',
+          right: '-30%',
           top: '-18%',
           transform: 'rotate(2.2deg) scaleY(-1)',
           transformOrigin: 'center',
