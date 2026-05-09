@@ -42,7 +42,7 @@ export default function IntroPage() {
         src="/intro/bg-bottom.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-[12%] h-[90%] w-auto mix-blend-multiply opacity-40"
+        className="pointer-events-none absolute bottom-0 right-0 h-[90%] w-auto mix-blend-multiply opacity-40"
       />
       {/* bg-topleft.png : top-left vignette overlay */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -58,7 +58,7 @@ export default function IntroPage() {
       <div
         className="pointer-events-none absolute"
         style={{
-          left: '-15%',
+          left: '-38%',
           bottom: '-2%',
           transform: 'rotate(9.28deg)',
           transformOrigin: 'bottom center',
@@ -102,14 +102,14 @@ export default function IntroPage() {
           {/* Magic swirl effect — place magic-effect.png in public/intro/ */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/intro/magic-effect.png"
+            src="/intro/magic_effect.png"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] object-cover opacity-70"
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] object-contain opacity-70"
           />
 
           {/* Team DA */}
-          <p className="relative text-[16px] font-thin tracking-[0.18em] text-white/70 mb-1">
+          <p className="relative text-[16px] font-thin text-white/70 mb-1">
             Team DA
           </p>
 
