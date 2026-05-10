@@ -40,11 +40,15 @@ export default function IntroPage() {
       />
 
       {/*
-        Knight video — dimensions from Figma per breakpoint:
-          mobile  390×844:  h=941px  → h-[112vh]
-          tablet  768×1024: h=1186px → h-[116vh]
-          desktop 1440×900: h=1281px → h-[142vh]
-        width is auto (follows aspect ratio). top-0 per Figma for all breakpoints.
+        Knight video.
+        The webm file has ~40% empty space at the top before the knight figure.
+        Negative top shifts the video up so the knight head appears near the
+        top of the viewport. Heights are larger than Figma to keep it visually big.
+
+        Figma breakpoints (reference):
+          mobile  390×844:  h=941px  (112vh)
+          tablet  768×1024: h=1186px (116vh)
+          desktop 1440×900: h=1281px (142vh)
       */}
       <video
         autoPlay
@@ -55,9 +59,9 @@ export default function IntroPage() {
         className="
           absolute pointer-events-none w-auto -translate-x-1/2
           blur-[2px] opacity-50 mix-blend-color-dodge
-          h-[112vh] left-[calc(50%+55px)] top-0
-          md:h-[116vh] md:left-[calc(50%+63px)]
-          lg:h-[142vh] lg:left-[calc(50%+24px)]
+          h-[140vh] left-[calc(50%+55px)] top-[-35vh]
+          md:h-[150vh] md:left-[calc(50%+63px)] md:top-[-40vh]
+          lg:h-[165vh] lg:left-[calc(50%+24px)] lg:top-[-50vh]
         "
       >
         <source src="/intro/piece-knight.webm" type="video/webm" />
