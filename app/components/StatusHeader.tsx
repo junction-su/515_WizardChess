@@ -17,7 +17,7 @@ export default function StatusHeader({ status }: { status: ConnectionStatus }) {
         <div className="relative shrink-0 w-[34px] h-[34px] overflow-hidden">
           <div className="absolute inset-[12.76%_23.68%]">
             <img
-              src="/pieces/knight_black.svg"
+              src="/pieces/Knight_1.svg"
               alt=""
               aria-hidden="true"
               className="absolute inset-0 block size-full max-w-none"
