@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Wizard Chess",
   description: "Accessible chess companion web interface",
   icons: {
-    icon: "/pieces/header-knight.svg",
+    icon: [{ url: "/pieces/header-knight.svg", type: "image/svg+xml" }],
   },
 };
 
