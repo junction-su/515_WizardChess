@@ -58,9 +58,9 @@ export default function IntroPage() {
           opacity-50
           mix-blend-color-dodge
       
-          w-[340vw]
-          left-[calc(50%+20vw)]
-          top-[7vh]
+          w-[350vw]
+          left-[calc(50%+17vw)]
+          top-[6vh]
       
           md:w-[260vw]
           md:left-[calc(50%+10vw)]
