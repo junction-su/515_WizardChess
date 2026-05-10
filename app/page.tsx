@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
@@ -39,17 +37,7 @@ export default function IntroPage() {
         }}
       />
 
-      {/*
-        Knight video.
-        The webm file has ~40% empty space at the top before the knight figure.
-        Negative top shifts the video up so the knight head appears near the
-        top of the viewport. Heights are larger than Figma to keep it visually big.
-
-        Figma breakpoints (reference):
-          mobile  390×844:  h=941px  (112vh)
-          tablet  768×1024: h=1186px (116vh)
-          desktop 1440×900: h=1281px (142vh)
-      */}
+      {/* Knight video */}
       <video
         autoPlay
         loop
@@ -57,11 +45,32 @@ export default function IntroPage() {
         playsInline
         aria-hidden="true"
         className="
-          absolute pointer-events-none w-auto -translate-x-1/2
-          blur-[2px] opacity-50 mix-blend-color-dodge
-          h-[140vh] left-[calc(50%+55px)] top-[-35vh]
-          md:h-[150vh] md:left-[calc(50%+63px)] md:top-[-40vh]
-          lg:h-[165vh] lg:left-[calc(50%+24px)] lg:top-[-50vh]
+          fixed
+          pointer-events-none
+          select-none
+          z-[1]
+          h-auto
+          max-w-none
+          -translate-x-1/2
+          blur-[2px]
+          opacity-50
+          mix-blend-color-dodge
+
+          w-[363vw]
+          left-[calc(50%+197vw)]
+          top-[8vh]
+
+          md:w-[280vw]
+          md:left-[calc(50%+149vw)]
+          md:top-[1vh]
+
+          xl:w-[180vw]
+          xl:left-[calc(50%+96vw)]
+          xl:top-[7vh]
+
+          2xl:w-[150vw]
+          2xl:left-[calc(50%+78vw)]
+          2xl:top-[2vh]
         "
       >
         <source src="/intro/piece-knight.webm" type="video/webm" />
@@ -69,22 +78,7 @@ export default function IntroPage() {
 
       {/* Content layer */}
       <div className="relative z-10 h-full">
-
-        {/*
-          Title block.
-          Container is full-width with px-5 on mobile so SVGs fill the screen.
-          SVGs have built-in whitespace (~42px bottom on wizard, ~36px top on chess
-          at desktop size) — negative margins cancel that whitespace to tighten the gap.
-
-          Positions from Figma:
-            mobile:  top calc(50% - 136px)
-            tablet:  top 30%  (303px / 1024px)
-            desktop: top 24%  (216px / 900px)
-
-          SVG widths at each breakpoint:
-            wizard.svg: mobile w-full (~350px), tablet 401px, desktop 522px
-            chess.svg:  mobile w-full (~350px), tablet 343px, desktop 437px
-        */}
+        {/* Title block */}
         <div
           className="
             absolute left-1/2 -translate-x-1/2 flex flex-col items-center
@@ -127,12 +121,7 @@ export default function IntroPage() {
           />
         </div>
 
-        {/*
-          Connect button.
-          mobile:  pinned bottom, full width, pb-[24px] per Figma
-          tablet:  240px wide, top 69.6% (712.5px / 1024px)
-          desktop: 240px wide, top 73.9% (665px / 900px)
-        */}
+        {/* Connect button */}
         <div
           className="
             absolute left-1/2 -translate-x-1/2
@@ -148,16 +137,22 @@ export default function IntroPage() {
               flex items-center justify-center gap-2
               w-full md:w-[240px] rounded-[8px] px-8 py-4
               text-[16px] font-medium transition-all duration-200
-              ${status === 'idle'
-                ? 'bg-white text-[#00357d] md:hover:bg-[#cde2ff] md:hover:font-bold'
-                : status === 'connecting'
-                ? 'cursor-not-allowed bg-white/80 text-[#00357d]/50'
-                : 'bg-emerald-500 text-white'
+              ${
+                status === 'idle'
+                  ? 'bg-white text-[#00357d] md:hover:bg-[#cde2ff] md:hover:font-bold'
+                  : status === 'connecting'
+                    ? 'cursor-not-allowed bg-white/80 text-[#00357d]/50'
+                    : 'bg-emerald-500 text-white'
               }
             `}
           >
             {status === 'idle' && 'Connect'}
-            {status === 'connecting' && <><Spinner />Connecting...</>}
+            {status === 'connecting' && (
+              <>
+                <Spinner />
+                Connecting...
+              </>
+            )}
             {status === 'done' && '✓  Done!'}
           </button>
 
