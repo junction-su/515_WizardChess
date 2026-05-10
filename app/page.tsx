@@ -57,22 +57,22 @@ export default function IntroPage() {
           blur-[2px]
           opacity-50
           mix-blend-color-dodge
-
+      
           w-[363vw]
           left-[calc(50%+197vw)]
           top-[8vh]
-
+      
           md:w-[280vw]
           md:left-[calc(50%+149vw)]
           md:top-[1vh]
-
+      
           xl:w-[180vw]
-          xl:left-[calc(50%+96vw)]
-          xl:top-[7vh]
-
+          xl:left-[calc(50%+45vw)]
+          xl:top-[0vh]
+      
           2xl:w-[150vw]
-          2xl:left-[calc(50%+78vw)]
-          2xl:top-[2vh]
+          2xl:left-[calc(50%+35vw)]
+          2xl:top-[0vh]
         "
       >
         <source src="/intro/piece-knight.webm" type="video/webm" />
