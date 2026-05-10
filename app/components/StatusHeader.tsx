@@ -14,16 +14,12 @@ export default function StatusHeader({ status }: { status: ConnectionStatus }) {
   return (
     <header className="flex items-center justify-between px-6 py-3 border-b border-stone-200 bg-white">
       <div className="flex items-center gap-2">
-        <div className="relative shrink-0 w-[34px] h-[34px] overflow-hidden">
-          <div className="absolute inset-[12.76%_23.68%]">
-            <img
-              src="/pieces/header-knight.svg"
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 block size-full max-w-none"
-            />
-          </div>
-        </div>
+        <img
+          src="/pieces/header-knight.svg"
+          alt=""
+          aria-hidden="true"
+          className="shrink-0 h-[34px] w-auto"
+        />
         <span className={`${cinzel.className} font-bold text-[#1c1917] text-[16px] whitespace-nowrap`}>
           Wizard Chess
         </span>
