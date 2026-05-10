@@ -59,7 +59,7 @@ export default function IntroPage() {
           mix-blend-color-dodge
       
           w-[340vw]
-          left-[calc(50%+30vw)]
+          left-[calc(50%+20vw)]
           top-[7vh]
       
           md:w-[260vw]
