@@ -40,10 +40,11 @@ export default function IntroPage() {
       />
 
       {/*
-        Knight video.
-        Figma desktop (1440×900): w=2277px, h=1281px, left=calc(50%+24px), top=-6.62px
-        2277/1440 ≈ 158vw → scale by viewport width so it matches Figma proportions.
-        Mobile/tablet use slightly larger vw ratio to maintain visual coverage.
+        Knight video — dimensions from Figma per breakpoint:
+          mobile  390×844:  h=941px  → h-[112vh]
+          tablet  768×1024: h=1186px → h-[116vh]
+          desktop 1440×900: h=1281px → h-[142vh]
+        width is auto (follows aspect ratio). top-0 per Figma for all breakpoints.
       */}
       <video
         autoPlay
@@ -52,11 +53,11 @@ export default function IntroPage() {
         playsInline
         aria-hidden="true"
         className="
-          absolute pointer-events-none h-auto -translate-x-1/2
+          absolute pointer-events-none w-auto -translate-x-1/2
           blur-[2px] opacity-50 mix-blend-color-dodge
-          w-[220vw] left-[calc(50%+30px)] top-0
-          md:w-[190vw] md:left-[calc(50%+40px)]
-          lg:w-[158vw] lg:left-[calc(50%+24px)]
+          h-[112vh] left-[calc(50%+55px)] top-0
+          md:h-[116vh] md:left-[calc(50%+63px)]
+          lg:h-[142vh] lg:left-[calc(50%+24px)]
         "
       >
         <source src="/intro/piece-knight.webm" type="video/webm" />
@@ -67,44 +68,40 @@ export default function IntroPage() {
 
         {/*
           Title block.
-          Positions from Figma frame data:
-            mobile:  calc(50% - 136px)
-            tablet:  30% from top  (303px / 1024px)
-            desktop: 24% from top  (216px / 900px)
+          Container is full-width with px-5 on mobile so SVGs fill the screen.
+          SVGs have built-in whitespace (~42px bottom on wizard, ~36px top on chess
+          at desktop size) — negative margins cancel that whitespace to tighten the gap.
 
-          SVG widths are proportional to Figma font sizes:
-            wizard.svg exported at 130px → 522px wide at desktop
-            chess.svg  exported at 140px → 437px wide at desktop
-            mobile scale: 80/130=0.615 wizard, 90/140=0.643 chess
-            tablet scale: 100/130=0.769 wizard, 110/140=0.786 chess
+          Positions from Figma:
+            mobile:  top calc(50% - 136px)
+            tablet:  top 30%  (303px / 1024px)
+            desktop: top 24%  (216px / 900px)
+
+          SVG widths at each breakpoint:
+            wizard.svg: mobile w-full (~350px), tablet 401px, desktop 522px
+            chess.svg:  mobile w-full (~350px), tablet 343px, desktop 437px
         */}
         <div
           className="
             absolute left-1/2 -translate-x-1/2 flex flex-col items-center
+            w-full px-5
             top-[calc(50%-136px)]
-            md:top-[30%]
+            md:w-auto md:px-0 md:top-[30%]
             lg:top-[24%]
           "
         >
-          {/* WIZARD */}
           <img
             src="/intro/wizard.svg"
             alt="Wizard"
             className="
-              w-[321px] mb-3
-              md:w-[401px] md:mb-2
-              lg:w-[522px] lg:mb-2
+              w-full mb-[-26px]
+              md:w-[401px] md:mb-[-30px]
+              lg:w-[522px] lg:mb-[-38px]
             "
           />
 
           {/* — Team DA — divider */}
-          <div
-            className="
-              flex items-center w-full gap-6
-              md:gap-16
-              lg:gap-[77px]
-            "
-          >
+          <div className="flex items-center w-full gap-6 md:gap-16 lg:gap-[77px]">
             <div className="flex-1 h-px bg-white/40" />
             <span
               className={`${inter.className} text-white/80 whitespace-nowrap team-da-spacing`}
@@ -115,30 +112,29 @@ export default function IntroPage() {
             <div className="flex-1 h-px bg-white/40" />
           </div>
 
-          {/* CHESS */}
           <img
             src="/intro/chess.svg"
             alt="Chess"
             className="
-              w-[281px] mt-3
-              md:w-[343px] md:mt-2
-              lg:w-[437px] lg:mt-2
+              w-full mt-[-22px]
+              md:w-[343px] md:mt-[-26px]
+              lg:w-[437px] lg:mt-[-32px]
             "
           />
         </div>
 
         {/*
           Connect button.
-          mobile:  pinned bottom, full width, 20px side padding, pb-12
-          tablet:  240px wide, 70% from top
-          desktop: 240px wide, 74% from top
+          mobile:  pinned bottom, full width, pb-[24px] per Figma
+          tablet:  240px wide, top 69.6% (712.5px / 1024px)
+          desktop: 240px wide, top 73.9% (665px / 900px)
         */}
         <div
           className="
             absolute left-1/2 -translate-x-1/2
-            bottom-0 pb-12 px-5 w-full flex flex-col items-center
-            md:bottom-auto md:top-[70%] md:w-auto md:px-0
-            lg:top-[74%]
+            bottom-0 pb-6 px-5 w-full flex flex-col items-center
+            md:bottom-auto md:top-[69.6%] md:w-auto md:px-0
+            lg:top-[73.9%]
           "
         >
           <button
