@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wizarding Chess",
+  title: "Wizard Chess",
   description: "Accessible chess companion web interface",
+  icons: {
+    icon: "/pieces/header-knight.svg",
+  },
 };
 
 export default function RootLayout({
