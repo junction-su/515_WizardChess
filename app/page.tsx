@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Cinzel } from 'next/font/google'
@@ -17,6 +18,10 @@ function Spinner() {
   )
 }
 
+const titleStroke: CSSProperties = {
+  WebkitTextStroke: '1.5px rgba(200, 215, 240, 0.70)',
+}
+
 export default function IntroPage() {
   const router = useRouter()
   const [status, setStatus] = useState<ConnectStatus>('idle')
@@ -29,130 +34,149 @@ export default function IntroPage() {
   }
 
   return (
-    // fixed inset-0 ensures the gradient covers the entire viewport
-    // regardless of the body's white background in globals.css
-    <div
-      className="fixed inset-0 overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #061E3F 27.57%, #0F4FA5 145.98%)' }}
-    >
-      {/* ── Background texture overlays (place files in public/intro/) ── */}
-      {/* bg-bottom.png : chess-pattern texture, mix-blend-multiply, opacity 40% */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/intro/bg-bottom.png"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-0 w-[88%] h-auto mix-blend-overlay opacity-40"
-      />
-      {/* bg-topleft.png : top-left vignette overlay */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/intro/bg-topleft.png"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 w-[46%] h-auto mix-blend-overlay opacity-60"
+    <div className="fixed inset-0 overflow-hidden bg-[#071426]">
+      {/* Radial dim overlay — dark edges, transparent center */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse at center, rgba(12,25,43,0) 0%, rgba(3,18,40,1) 100%)',
+        }}
       />
 
-      {/* ── Left: knight webm ── */}
-      {/* Figma: container left=-555px (of 1440), height=1073, rotated 9.28deg */}
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          left: '-38%',
-          bottom: '-16%',
-          transform: 'rotate(9.28deg)',
-          transformOrigin: 'bottom center',
-        }}
+      {/*
+        Knight background video
+        Sizing from Figma frames:
+          mobile  (390×844):  h≈112vh, centered with slight right+down offset
+          tablet  (768×1024): h≈116vh, centered with larger right+down offset
+          desktop (1440×900): h≈142vh, pinned near top with slight right offset
+      */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden="true"
+        className="
+          absolute pointer-events-none w-auto
+          blur-[2px] opacity-50 mix-blend-color-dodge
+          h-[112vh] left-[calc(50%+55px)] top-[calc(50%+49px)] -translate-x-1/2 -translate-y-1/2
+          md:h-[116vh] md:left-[calc(50%+63px)] md:top-[calc(50%+81px)]
+          lg:h-[142vh] lg:left-[calc(50%+24px)] lg:top-[-7px] lg:translate-y-0
+        "
       >
-        <video
-          autoPlay loop muted playsInline
-          style={{ height: 'clamp(50vh, 56vw, 90vh)' }}
-          className="w-auto object-contain"
+        <source src="/intro/piece-knight.webm" type="video/webm" />
+      </video>
+
+      {/* Content layer */}
+      <div className="relative z-10 h-full">
+
+        {/* Title block
+            mobile:  vertically centered at 50%−42px
+            tablet:  top edge at 30% (≈303px/1024px)
+            desktop: top edge at 24% (≈216px/900px)
+        */}
+        <div
+          className="
+            absolute left-1/2 -translate-x-1/2 flex flex-col items-center
+            top-[calc(50%-42px)] -translate-y-1/2
+            md:top-[30%] md:translate-y-0
+            lg:top-[24%]
+          "
         >
-          <source src="/intro/piece-knight.webm" type="video/webm" />
-          <source src="/intro/piece-knight.mp4" type="video/mp4" />
-        </video>
-      </div>
-
-      {/* ── Right: queen webm (flipped vertically, bleeds off top-right) ── */}
-      {/* Figma: container left=652px (of 1440), top=-177px, scaleY(-1), rotate 2.2deg */}
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          right: '-26%',
-          top: '-18%',
-          transform: 'rotate(2.2deg) scaleY(-1)',
-          transformOrigin: 'center',
-        }}
-      >
-        <video
-          autoPlay loop muted playsInline
-          style={{ height: 'clamp(42vh, 49vw, 78vh)' }}
-          className="w-auto object-contain"
-        >
-          <source src="/intro/piece-queen.webm" type="video/webm" />
-          <source src="/intro/piece-queen.mp4" type="video/mp4" />
-        </video>
-      </div>
-
-      {/* ── Center content ── */}
-      <div className="relative z-10 flex h-full flex-col items-center justify-center">
-
-        {/* Title block with magic-effect behind */}
-        <div className="relative flex flex-col items-center">
-
-          {/* Magic swirl effect — place magic-effect.png in public/intro/ */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/intro/magic_effect.png"
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] object-contain opacity-70"
-          />
-
-          {/* Team DA */}
-          <p className="relative text-[16px] font-thin text-white/70 mb-1">
-            Team DA
+          {/* WIZARD */}
+          <p
+            className={`
+              ${cinzel.className} font-bold leading-none text-transparent text-center whitespace-nowrap
+              text-[80px] mb-[-2px]
+              md:text-[100px] md:mb-[-10px]
+              lg:text-[130px] lg:mb-[-16px]
+            `}
+            style={titleStroke}
+          >
+            Wizard
           </p>
 
-          {/* Wizarding Chess */}
-          <h1
-            className={`${cinzel.className} relative text-center text-[100px] font-bold leading-[1.05] text-white`}
-            style={{ textShadow: '0px 0px 5.5px rgba(6, 26, 51, 0.38)' }}
+          {/* — Team DA — divider */}
+          <div
+            className="
+              flex items-center w-full
+              h-[17px] mb-[-2px] gap-6
+              md:h-[18px] md:mb-[-10px] md:gap-16
+              lg:h-[20px] lg:mb-[-16px] lg:gap-[77px]
+            "
           >
-            Wizarding
-            <br />
+            <div className="flex-1 h-px bg-white/40" />
+            <span
+              className="
+                text-white/80 font-thin whitespace-nowrap
+                text-[14px] tracking-[15.82px]
+                md:tracking-[26.46px]
+                lg:text-[16px] lg:tracking-[30.24px]
+              "
+            >
+              Team DA
+            </span>
+            <div className="flex-1 h-px bg-white/40" />
+          </div>
+
+          {/* CHESS */}
+          <p
+            className={`
+              ${cinzel.className} font-bold leading-none text-transparent text-center whitespace-nowrap
+              text-[90px]
+              md:text-[110px]
+              lg:text-[140px]
+            `}
+            style={titleStroke}
+          >
             Chess
-          </h1>
+          </p>
         </div>
 
-        {/* Connect button */}
-        <button
-          onClick={handleConnect}
-          disabled={status !== 'idle'}
-          className={`
-            mt-10 flex w-[200px] items-center justify-center gap-2
-            rounded-[8px] px-[16px] py-[14px]
-            text-[16px] font-medium transition-all duration-200
-            ${status === 'idle'
-              ? 'border border-[#004cb2] bg-[#071c38] text-white hover:bg-white hover:text-[#013c8c] hover:border-white'
-              : status === 'connecting'
-              ? 'cursor-not-allowed border border-[#004cb2] bg-[#071c38] text-white/60'
-              : 'border border-emerald-500 bg-emerald-600 text-white'
-            }
-          `}
+        {/* Connect button
+            mobile:  pinned to bottom, full width (minus 20px side padding), pb-12
+            tablet:  centered, fixed width 240px, at ~70% from top
+            desktop: centered, fixed width 240px, at ~74% from top
+        */}
+        <div
+          className="
+            absolute left-1/2 -translate-x-1/2
+            bottom-0 pb-12 px-5 w-full flex flex-col items-center
+            md:bottom-auto md:top-[70%] md:w-auto md:px-0
+            lg:top-[74%]
+          "
         >
-          {status === 'idle' && 'Connect'}
-          {status === 'connecting' && <><Spinner />Connecting...</>}
-          {status === 'done' && '✓  Done!'}
-        </button>
+          <button
+            onClick={handleConnect}
+            disabled={status !== 'idle'}
+            className={`
+              flex items-center justify-center gap-2
+              w-full md:w-[240px] rounded-[8px] px-8 py-4
+              text-[16px] font-medium transition-all duration-200
+              ${status === 'idle'
+                ? 'bg-white text-[#00357d] md:hover:bg-[#cde2ff] md:hover:font-bold'
+                : status === 'connecting'
+                ? 'cursor-not-allowed bg-white/80 text-[#00357d]/50'
+                : 'bg-emerald-500 text-white'
+              }
+            `}
+          >
+            {status === 'idle' && 'Connect'}
+            {status === 'connecting' && <><Spinner />Connecting...</>}
+            {status === 'done' && '✓  Done!'}
+          </button>
 
-        {/* Status hint */}
-        <p className={`mt-4 text-xs text-white/40 transition-opacity duration-300 ${status === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
-          {status === 'connecting' && 'Establishing connection with the board…'}
-          {status === 'done' && 'Board connected. Launching game…'}
-          {status === 'idle' && ' '}
-        </p>
+          <p
+            className={`mt-4 text-xs text-white/40 text-center transition-opacity duration-300 ${
+              status === 'idle' ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {status === 'connecting' && 'Establishing connection with the board…'}
+            {status === 'done' && 'Board connected. Launching game…'}
+            {status === 'idle' && ' '}
+          </p>
+        </div>
       </div>
     </div>
   )
