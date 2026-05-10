@@ -17,3 +17,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.team-da-spacing {
+  letter-spacing: 15.82px;
+}
+@media (min-width: 768px) {
+  .team-da-spacing { letter-spacing: 26.46px; }
+}
+@media (min-width: 1024px) {
+  .team-da-spacing { letter-spacing: 30.24px; }
+}

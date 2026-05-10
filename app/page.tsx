@@ -1,12 +1,10 @@
 'use client'
 
-import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Cinzel, Inter } from 'next/font/google'
 
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['700'] })
-// Inter weight 100 = Thin, closest to Pretendard Thin used in Figma
 const inter = Inter({ subsets: ['latin'], weight: ['100'] })
 
 type ConnectStatus = 'idle' | 'connecting' | 'done'
@@ -20,10 +18,50 @@ function Spinner() {
   )
 }
 
-// 0.75px keeps the outline thin and clean on Cinzel Bold's complex serif shapes
-const titleStroke: CSSProperties = {
-  WebkitTextFillColor: 'transparent',
-  WebkitTextStroke: '0.75px rgba(180, 200, 235, 0.75)',
+/**
+ * Renders outline text using inline SVG for clean vector strokes.
+ * CSS -webkit-text-stroke reveals Cinzel Bold's internal hairlines as a
+ * "wireframe" artefact; SVG stroke renders only the glyph contour.
+ */
+function OutlineTitle({ children, className = '' }: { children: string; className?: string }) {
+  return (
+    <div
+      role="img"
+      aria-label={children}
+      className={`inline-block relative leading-none whitespace-nowrap ${className}`}
+    >
+      {/* Invisible span sizes the container to exact text dimensions */}
+      <span
+        aria-hidden="true"
+        className={`${cinzel.className} font-bold invisible`}
+      >
+        {children}
+      </span>
+      {/* SVG overlaid for vector-quality stroke */}
+      <svg
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full"
+        style={{ overflow: 'visible' }}
+      >
+        <text
+          x="50%"
+          y="0.82em"
+          textAnchor="middle"
+          fill="none"
+          stroke="rgba(180, 200, 235, 0.80)"
+          strokeWidth="0.8"
+          strokeLinejoin="round"
+          style={{
+            fontFamily: cinzel.style.fontFamily,
+            fontWeight: 700,
+            fontSize: 'inherit',
+          }}
+        >
+          {children}
+        </text>
+      </svg>
+    </div>
+  )
 }
 
 export default function IntroPage() {
@@ -39,7 +77,7 @@ export default function IntroPage() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#071426]">
-      {/* Radial dim overlay — transparent center, dark edges (Figma vignette) */}
+      {/* Radial dim overlay — transparent centre, dark edges */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -49,13 +87,16 @@ export default function IntroPage() {
       />
 
       {/*
-        Knight background video
-        Avoid translate-y — Tailwind v4 responsive override for translate-y is unreliable.
-        Instead calculate top directly from Figma frame positions:
-          mobile  (390×844):  knight center y=50%+49px → top edge ≈ 0
-          tablet  (768×1024): knight center y=50%+81px → top edge ≈ 0
-          desktop (1440×900): Figma top=-6.62px → top-0 (effectively same)
-        Sizes: mobile 112vh · tablet 116vh · desktop 142vh
+        Knight background video.
+        The webm file has ~50% empty space at the top before the knight figure.
+        top-[-50vh] shifts the video up so the knight head sits near the
+        top of the viewport. Heights stay at the Figma-derived values (112/116/142vh)
+        so the knight extends naturally below the viewport.
+
+        Responsive sizing (Figma frame dimensions):
+          mobile  390×844  → h-[112vh]
+          tablet  768×1024 → h-[116vh]
+          desktop 1440×900 → h-[142vh]
       */}
       <video
         autoPlay
@@ -66,7 +107,7 @@ export default function IntroPage() {
         className="
           absolute pointer-events-none w-auto -translate-x-1/2
           blur-[2px] opacity-50 mix-blend-color-dodge
-          h-[112vh] left-[calc(50%+55px)] top-0
+          h-[112vh] left-[calc(50%+55px)] top-[-50vh]
           md:h-[116vh] md:left-[calc(50%+63px)]
           lg:h-[142vh] lg:left-[calc(50%+24px)]
         "
@@ -78,12 +119,11 @@ export default function IntroPage() {
       <div className="relative z-10 h-full">
 
         {/*
-          Title block — avoid translate-y for same reason.
-          Top positions derived directly from Figma:
-            mobile:  center at 50%−42px → top edge ≈ calc(50% − 136px)
-                     (136 = 42 + half of ~187px title height at 80/90px font)
-            tablet:  Figma top=303px/1024px ≈ 30%
-            desktop: Figma top=216px/900px  ≈ 24%
+          Title block.
+          Positions are taken directly from Figma frame data (no translate-y tricks):
+            mobile:  calc(50% − 136px) ≈ vertically centred at 50%−42px
+            tablet:  30% from top  (Figma: 303px / 1024px)
+            desktop: 24% from top  (Figma: 216px / 900px)
         */}
         <div
           className="
@@ -94,36 +134,31 @@ export default function IntroPage() {
           "
         >
           {/* WIZARD */}
-          <p
-            className={`
-              ${cinzel.className} font-bold leading-none text-center whitespace-nowrap
-              text-[80px] mb-1
-              md:text-[100px] md:mb-[-4px]
-              lg:text-[130px] lg:mb-[-8px]
-            `}
-            style={titleStroke}
+          <OutlineTitle
+            className="
+              text-[80px] mb-4
+              md:text-[100px] md:mb-3
+              lg:text-[130px] lg:mb-3
+            "
           >
             Wizard
-          </p>
+          </OutlineTitle>
 
           {/* — Team DA — divider */}
           <div
             className="
-              flex items-center w-full
-              h-[17px] gap-6
-              md:h-[18px] md:gap-16
-              lg:h-[20px] lg:gap-[77px]
+              flex items-center w-full gap-6
+              md:gap-16
+              lg:gap-[77px]
             "
           >
             <div className="flex-1 h-px bg-white/40" />
             <span
-              className={`
-                ${inter.className} text-white/80 whitespace-nowrap
-                text-[14px] tracking-[15.82px]
-                md:tracking-[26.46px]
-                lg:text-[16px] lg:tracking-[30.24px]
-              `}
-              style={{ fontWeight: 100 }}
+              className={`${inter.className} text-white/80 whitespace-nowrap team-da-spacing`}
+              style={{
+                fontWeight: 100,
+                fontSize: '14px',
+              }}
             >
               Team DA
             </span>
@@ -131,24 +166,22 @@ export default function IntroPage() {
           </div>
 
           {/* CHESS */}
-          <p
-            className={`
-              ${cinzel.className} font-bold leading-none text-center whitespace-nowrap
-              text-[90px] mt-1
-              md:text-[110px] md:mt-[-4px]
-              lg:text-[140px] lg:mt-[-8px]
-            `}
-            style={titleStroke}
+          <OutlineTitle
+            className="
+              text-[90px] mt-4
+              md:text-[110px] md:mt-3
+              lg:text-[140px] lg:mt-3
+            "
           >
             Chess
-          </p>
+          </OutlineTitle>
         </div>
 
         {/*
-          Connect button
-          mobile:  pinned to bottom, full width with 20px side padding, pb-12
-          tablet:  fixed 240px, at ~70% from top
-          desktop: fixed 240px, at ~74% from top
+          Connect button.
+          mobile:  pinned bottom, full width, 20px side padding, pb-12
+          tablet:  240px wide, 70% from top
+          desktop: 240px wide, 74% from top
         */}
         <div
           className="
