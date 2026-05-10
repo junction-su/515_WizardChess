@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Cinzel, Inter } from 'next/font/google'
+import { Inter } from 'next/font/google'
 
-const cinzel = Cinzel({ subsets: ['latin'], weight: ['700'] })
 const inter = Inter({ subsets: ['latin'], weight: ['100'] })
 
 type ConnectStatus = 'idle' | 'connecting' | 'done'
@@ -15,52 +14,6 @@ function Spinner() {
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
-  )
-}
-
-/**
- * Renders outline text using inline SVG for clean vector strokes.
- * CSS -webkit-text-stroke reveals Cinzel Bold's internal hairlines as a
- * "wireframe" artefact; SVG stroke renders only the glyph contour.
- */
-function OutlineTitle({ children, className = '' }: { children: string; className?: string }) {
-  return (
-    <div
-      role="img"
-      aria-label={children}
-      className={`inline-block relative leading-none whitespace-nowrap ${className}`}
-    >
-      {/* Invisible span sizes the container to exact text dimensions */}
-      <span
-        aria-hidden="true"
-        className={`${cinzel.className} font-bold invisible`}
-      >
-        {children}
-      </span>
-      {/* SVG overlaid for vector-quality stroke */}
-      <svg
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full"
-        style={{ overflow: 'visible' }}
-      >
-        <text
-          x="50%"
-          y="0.82em"
-          textAnchor="middle"
-          fill="none"
-          stroke="rgba(180, 200, 235, 0.80)"
-          strokeWidth="0.8"
-          strokeLinejoin="round"
-          style={{
-            fontFamily: cinzel.style.fontFamily,
-            fontWeight: 700,
-            fontSize: 'inherit',
-          }}
-        >
-          {children}
-        </text>
-      </svg>
-    </div>
   )
 }
 
@@ -77,7 +30,7 @@ export default function IntroPage() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#071426]">
-      {/* Radial dim overlay — transparent centre, dark edges */}
+      {/* Radial dim overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -87,16 +40,10 @@ export default function IntroPage() {
       />
 
       {/*
-        Knight background video.
-        The webm file has ~50% empty space at the top before the knight figure.
-        top-[-50vh] shifts the video up so the knight head sits near the
-        top of the viewport. Heights stay at the Figma-derived values (112/116/142vh)
-        so the knight extends naturally below the viewport.
-
-        Responsive sizing (Figma frame dimensions):
-          mobile  390×844  → h-[112vh]
-          tablet  768×1024 → h-[116vh]
-          desktop 1440×900 → h-[142vh]
+        Knight video.
+        Figma desktop (1440×900): w=2277px, h=1281px, left=calc(50%+24px), top=-6.62px
+        2277/1440 ≈ 158vw → scale by viewport width so it matches Figma proportions.
+        Mobile/tablet use slightly larger vw ratio to maintain visual coverage.
       */}
       <video
         autoPlay
@@ -105,11 +52,11 @@ export default function IntroPage() {
         playsInline
         aria-hidden="true"
         className="
-          absolute pointer-events-none w-auto -translate-x-1/2
+          absolute pointer-events-none h-auto -translate-x-1/2
           blur-[2px] opacity-50 mix-blend-color-dodge
-          h-[112vh] left-[calc(50%+55px)] top-[-50vh]
-          md:h-[116vh] md:left-[calc(50%+63px)]
-          lg:h-[142vh] lg:left-[calc(50%+24px)]
+          w-[220vw] left-[calc(50%+30px)] top-0
+          md:w-[190vw] md:left-[calc(50%+40px)]
+          lg:w-[158vw] lg:left-[calc(50%+24px)]
         "
       >
         <source src="/intro/piece-knight.webm" type="video/webm" />
@@ -120,10 +67,16 @@ export default function IntroPage() {
 
         {/*
           Title block.
-          Positions are taken directly from Figma frame data (no translate-y tricks):
-            mobile:  calc(50% − 136px) ≈ vertically centred at 50%−42px
-            tablet:  30% from top  (Figma: 303px / 1024px)
-            desktop: 24% from top  (Figma: 216px / 900px)
+          Positions from Figma frame data:
+            mobile:  calc(50% - 136px)
+            tablet:  30% from top  (303px / 1024px)
+            desktop: 24% from top  (216px / 900px)
+
+          SVG widths are proportional to Figma font sizes:
+            wizard.svg exported at 130px → 522px wide at desktop
+            chess.svg  exported at 140px → 437px wide at desktop
+            mobile scale: 80/130=0.615 wizard, 90/140=0.643 chess
+            tablet scale: 100/130=0.769 wizard, 110/140=0.786 chess
         */}
         <div
           className="
@@ -134,15 +87,15 @@ export default function IntroPage() {
           "
         >
           {/* WIZARD */}
-          <OutlineTitle
+          <img
+            src="/intro/wizard.svg"
+            alt="Wizard"
             className="
-              text-[80px] mb-4
-              md:text-[100px] md:mb-3
-              lg:text-[130px] lg:mb-3
+              w-[321px] mb-3
+              md:w-[401px] md:mb-2
+              lg:w-[522px] lg:mb-2
             "
-          >
-            Wizard
-          </OutlineTitle>
+          />
 
           {/* — Team DA — divider */}
           <div
@@ -155,10 +108,7 @@ export default function IntroPage() {
             <div className="flex-1 h-px bg-white/40" />
             <span
               className={`${inter.className} text-white/80 whitespace-nowrap team-da-spacing`}
-              style={{
-                fontWeight: 100,
-                fontSize: '14px',
-              }}
+              style={{ fontWeight: 100, fontSize: '14px' }}
             >
               Team DA
             </span>
@@ -166,15 +116,15 @@ export default function IntroPage() {
           </div>
 
           {/* CHESS */}
-          <OutlineTitle
+          <img
+            src="/intro/chess.svg"
+            alt="Chess"
             className="
-              text-[90px] mt-4
-              md:text-[110px] md:mt-3
-              lg:text-[140px] lg:mt-3
+              w-[281px] mt-3
+              md:w-[343px] md:mt-2
+              lg:w-[437px] lg:mt-2
             "
-          >
-            Chess
-          </OutlineTitle>
+          />
         </div>
 
         {/*
