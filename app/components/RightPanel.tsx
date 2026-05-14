@@ -3,6 +3,7 @@
 import { BoardPiece, LastMove, GameStatus, pieceLabel, moveDescription } from '@/app/lib/chess'
 import { Square } from 'chess.js'
 import ChessPiece from './ChessPiece'
+import { PlayerConfig } from '@/app/game/page'
 
 interface MoveSelection {
   from: Square | null
@@ -18,18 +19,39 @@ interface RightPanelProps {
   gameStatus: GameStatus
   connectionStatus: 'connected' | 'disconnected' | 'syncing'
   selection: MoveSelection
+  whiteTime: number
+  blackTime: number
   onConfirm: () => void
   onCancel: () => void
+  pending: boolean
+  illegalReason: string | null
+  players: PlayerConfig
+  onPlayersChange: (p: PlayerConfig) => void
+  engineReady: boolean
+}
+
+function formatTime(s: number): string {
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
 function PlayerCard({
   color,
   isActive,
   isGameOver,
+  time,
+  playerKind,
+  engineReady,
+  onToggleAI,
 }: {
   color: 'w' | 'b'
   isActive: boolean
   isGameOver: boolean
+  time: number
+  playerKind: 'human' | 'ai'
+  engineReady: boolean
+  onToggleAI: () => void
 }) {
   const label = color === 'w'
     ? (isActive && !isGameOver ? "White's turn" : 'White')
@@ -41,7 +63,7 @@ function PlayerCard({
         ? 'bg-[#f5f9ff] border-[#4091ff]'
         : 'border-[#c4c7ce]'
     }`} style={{ borderWidth: '0.5px' }}>
-      <div className="flex flex-col items-center gap-0">
+      <div className="flex flex-col items-center gap-0 w-full">
         <div className={`w-[52px] h-[52px] ${!isActive ? 'opacity-40' : ''}`}>
           <ChessPiece type="p" color={color} size={52} onDarkSquare={false} />
         </div>
@@ -50,6 +72,20 @@ function PlayerCard({
         }`}>
           {label}
         </span>
+        {isActive && !isGameOver && (
+          <span className="text-xs font-mono text-stone-500 mt-0.5">{formatTime(time)}</span>
+        )}
+        <button
+          onClick={onToggleAI}
+          disabled={!engineReady}
+          className={`mt-1.5 text-[10px] px-2 py-0.5 rounded-full border transition-colors disabled:opacity-40 ${
+            playerKind === 'ai'
+              ? 'bg-blue-100 border-blue-300 text-blue-700'
+              : 'border-stone-300 text-stone-500 hover:bg-stone-50'
+          }`}
+        >
+          {playerKind === 'ai' ? 'AI' : 'Human'}
+        </button>
       </div>
     </div>
   )
@@ -89,6 +125,8 @@ function MoveControlContent({
   selection,
   onConfirm,
   onCancel,
+  pending,
+  illegalReason,
 }: {
   isDisabled: boolean
   isGameOver: boolean
@@ -98,6 +136,8 @@ function MoveControlContent({
   selection: MoveSelection
   onConfirm: () => void
   onCancel: () => void
+  pending: boolean
+  illegalReason: string | null
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -106,6 +146,12 @@ function MoveControlContent({
       {isDisabled && (
         <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
           Board not connected. Reconnect to send moves.
+        </div>
+      )}
+
+      {illegalReason && (
+        <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+          Illegal move: {illegalReason}
         </div>
       )}
 
@@ -135,16 +181,16 @@ function MoveControlContent({
       <div className="flex gap-2">
         <button
           onClick={onConfirm}
-          disabled={!canConfirm}
+          disabled={!canConfirm || pending}
           className="flex-1 h-[40px] rounded-lg font-medium text-[11px] transition-colors
             bg-[#292524] text-white hover:bg-stone-700
             disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          Confirm Move
+          {pending ? 'Sending…' : 'Confirm Move'}
         </button>
         <button
           onClick={onCancel}
-          disabled={!hasFrom}
+          disabled={!hasFrom || pending}
           className="flex-1 h-[40px] rounded-lg font-medium text-[11px] border border-[#c4c7ce]
             text-[#504944] transition-colors hover:bg-stone-50
             disabled:opacity-30 disabled:cursor-not-allowed"
@@ -164,8 +210,15 @@ export default function RightPanel({
   gameStatus,
   connectionStatus,
   selection,
+  whiteTime,
+  blackTime,
   onConfirm,
   onCancel,
+  pending,
+  illegalReason,
+  players,
+  onPlayersChange,
+  engineReady,
 }: RightPanelProps) {
   const isDisabled = connectionStatus === 'disconnected'
   const isGameOver = gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw'
@@ -180,6 +233,7 @@ export default function RightPanel({
   const moveControlProps = {
     isDisabled, isGameOver, selectionText, canConfirm,
     hasFrom: !!selection.from, selection, onConfirm, onCancel,
+    pending, illegalReason,
   }
 
   return (
@@ -198,8 +252,16 @@ export default function RightPanel({
         <section>
           <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Current Turn</div>
           <div className="flex gap-2">
-            <PlayerCard color="w" isActive={currentTurn === 'w'} isGameOver={isGameOver} />
-            <PlayerCard color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver} />
+            <PlayerCard
+              color="w" isActive={currentTurn === 'w'} isGameOver={isGameOver}
+              time={whiteTime} playerKind={players.w} engineReady={engineReady}
+              onToggleAI={() => onPlayersChange({ ...players, w: players.w === 'ai' ? 'human' : 'ai' })}
+            />
+            <PlayerCard
+              color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver}
+              time={blackTime} playerKind={players.b} engineReady={engineReady}
+              onToggleAI={() => onPlayersChange({ ...players, b: players.b === 'ai' ? 'human' : 'ai' })}
+            />
           </div>
         </section>
 
