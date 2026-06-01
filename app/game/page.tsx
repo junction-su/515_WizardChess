@@ -42,9 +42,8 @@ function useChessGame() {
   const [selection, setSelection] = useState<MoveSelection>(EMPTY_SELECTION)
   const [legalMoves, setLegalMoves] = useState<LegalMoveSquare[]>([])
   const [announcement, setAnnouncement] = useState('')
-  const [whiteTime, setWhiteTime] = useState(300)
-  const [blackTime, setBlackTime] = useState(300)
   const [players, setPlayers] = useState<PlayerConfig>({ w: 'human', b: 'human' })
+  const [localMode, setLocalMode] = useState(false)
 
   const handleServerEvent = useCallback((e: ServerEvent) => {
     const chess = chessRef.current
@@ -123,13 +122,40 @@ function useChessGame() {
 
   const engine = useStockfish()
 
+  const localMove = useCallback((from: Square, to: Square): boolean => {
+    const chess = chessRef.current
+    let result
+    try { result = chess.move({ from, to, promotion: 'q' }) }
+    catch { result = null }
+    if (!result) return false
+
+    const moved: BoardPiece = { type: result.piece, color: result.color, square: result.to as Square }
+    const captured = result.captured
+      ? { type: result.captured, color: result.color === 'w' ? 'b' : 'w', square: result.to as Square } as BoardPiece
+      : undefined
+
+    const lm: LastMove = { from: result.from as Square, to: result.to as Square, san: result.san, piece: moved, captured }
+    setLastMove(lm)
+    if (captured) {
+      if (result.color === 'w') setCapturedByWhite((p) => [...p, captured])
+      else setCapturedByBlack((p) => [...p, captured])
+    }
+    setAnnouncement(moveDescription(lm))
+    setSelection(EMPTY_SELECTION)
+    setLegalMoves([])
+    setBoard(chessBoardToDisplay(chess))
+    setCurrentTurn(chess.turn())
+    setGameStatus(getGameStatus(chess))
+    return true
+  }, [])
+
   const aiThinkingRef = useRef(false)
   useEffect(() => {
     if (aiThinkingRef.current) return
     if (players[currentTurn] !== 'ai') return
     if (gameStatus !== 'playing' && gameStatus !== 'check') return
-    if (connectionStatus !== 'connected') return
-    if (pending) return
+    if (!localMode && connectionStatus !== 'connected') return
+    if (!localMode && pending) return
     if (!engine.ready) return
 
     aiThinkingRef.current = true
@@ -139,33 +165,22 @@ function useChessGame() {
       aiThinkingRef.current = false
       if (!mv) return
       if (chessRef.current.turn() !== turnAtRequest) return
-      const ok = sendMove(mv.from, mv.to)
-      if (ok) setAnnouncement(`AI move: ${mv.from} → ${mv.to}.`)
+      if (localMode) {
+        localMove(mv.from as Square, mv.to as Square)
+      } else {
+        const ok = sendMove(mv.from, mv.to)
+        if (ok) setAnnouncement(`AI move: ${mv.from} → ${mv.to}.`)
+      }
     }).catch(() => {
       aiThinkingRef.current = false
     })
-  }, [players, currentTurn, gameStatus, connectionStatus, pending, engine, sendMove])
-
-  useEffect(() => {
-    if (currentTurn === 'w') setWhiteTime(300)
-    else setBlackTime(300)
-  }, [currentTurn])
-
-  useEffect(() => {
-    const active = gameStatus === 'playing' || gameStatus === 'check'
-    if (!active || connectionStatus !== 'connected') return
-    const id = setInterval(() => {
-      if (currentTurn === 'w') setWhiteTime((t) => Math.max(0, t - 1))
-      else setBlackTime((t) => Math.max(0, t - 1))
-    }, 1000)
-    return () => clearInterval(id)
-  }, [gameStatus, currentTurn, connectionStatus])
+  }, [players, currentTurn, gameStatus, connectionStatus, pending, engine, sendMove, localMode, localMove])
 
   const selectSquare = useCallback((square: Square, piece: BoardPiece | null) => {
     const chess = chessRef.current
     if (gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw') return
-    if (connectionStatus === 'disconnected') return
-    if (pending) return
+    if (!localMode && connectionStatus === 'disconnected') return
+    if (!localMode && pending) return
     if (players[chess.turn()] === 'ai') return
 
     if (illegalReason) clearIllegal()
@@ -186,17 +201,21 @@ function useChessGame() {
       }
       return { ...prev, to: square }
     })
-  }, [gameStatus, connectionStatus, pending, illegalReason, clearIllegal, players])
+  }, [gameStatus, connectionStatus, pending, illegalReason, clearIllegal, players, localMode])
 
   const confirmMove = useCallback(() => {
     if (!selection.from || !selection.to || !selection.piece) return
+    if (localMode) {
+      localMove(selection.from, selection.to)
+      return
+    }
     const ok = sendMove(selection.from, selection.to)
     if (!ok) {
       setAnnouncement('Not connected. Move not sent.')
       return
     }
     setAnnouncement(`Move sent: ${selection.from} → ${selection.to}.`)
-  }, [selection, sendMove])
+  }, [selection, sendMove, localMode, localMove])
 
   const cancelSelection = useCallback(() => {
     setSelection(EMPTY_SELECTION)
@@ -205,15 +224,29 @@ function useChessGame() {
   }, [illegalReason, clearIllegal])
 
   const resetBoard = useCallback(() => {
+    if (localMode) {
+      chessRef.current = new Chess()
+      setBoard(chessBoardToDisplay(chessRef.current))
+      setCurrentTurn('w')
+      setLastMove(null)
+      setCapturedByWhite([])
+      setCapturedByBlack([])
+      setGameStatus('playing')
+      setSelection(EMPTY_SELECTION)
+      setLegalMoves([])
+      setAnnouncement('Board reset.')
+      return
+    }
     setAnnouncement('Reset requested.')
     sendReset()
-  }, [sendReset])
+  }, [sendReset, localMode])
 
   return {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
-    whiteTime, blackTime, pending, illegalReason,
+    pending, illegalReason,
     players, setPlayers, engineReady: engine.ready,
+    localMode, setLocalMode,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   }
 }
@@ -244,22 +277,22 @@ function GameOverOverlay({
 
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center z-30"
-      style={{ background: 'rgba(30, 24, 16, 0.62)', backdropFilter: 'blur(2px)' }}
+      className="fixed inset-0 flex items-center justify-center z-30"
+      style={{ background: 'rgba(7, 20, 45, 0.72)', backdropFilter: 'blur(3px)' }}
       role="dialog"
       aria-modal="true"
       aria-label="Game over"
     >
-      <div className="bg-[#faf7f2] rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-5 min-w-[260px]">
-        <div className="text-4xl font-bold text-stone-800 tracking-tight">
+      <div className="bg-[#0d1f3c] rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-5 min-w-[260px]">
+        <div className="text-4xl font-bold text-white tracking-tight">
           {titles[status]}
         </div>
-        <div className="text-stone-500 text-sm text-center">
+        <div className="text-blue-200/70 text-sm text-center">
           {subtitles[status]}
         </div>
         <button
           onClick={onReset}
-          className="mt-2 px-8 py-3 rounded-xl bg-stone-800 text-white font-semibold text-sm hover:bg-stone-700 active:bg-stone-900 transition-colors"
+          className="mt-2 px-8 py-3 rounded-xl bg-white text-[#0d1f3c] font-semibold text-sm hover:bg-blue-50 active:bg-blue-100 transition-colors"
           autoFocus
         >
           Reset Board
@@ -273,8 +306,9 @@ export default function Home() {
   const {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
-    whiteTime, blackTime, pending, illegalReason,
+    pending, illegalReason,
     players, setPlayers, engineReady,
+    localMode, setLocalMode,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   } = useChessGame()
 
@@ -288,7 +322,7 @@ export default function Home() {
 
       <main className="flex flex-col md:flex-row md:flex-1 md:overflow-hidden">
         {/* Board area */}
-        <div className="relative flex items-center justify-center p-3 sm:p-6 md:flex-1 md:p-4 lg:p-6 xl:p-8">
+        <div className="relative flex items-center justify-center p-3 sm:p-6 md:flex-1 md:p-4 lg:p-6 xl:p-8 overflow-hidden">
           <ChessBoard
             board={board}
             selectedSquare={selection.from}
@@ -325,8 +359,6 @@ export default function Home() {
             gameStatus={gameStatus}
             connectionStatus={connectionStatus}
             selection={selection}
-            whiteTime={whiteTime}
-            blackTime={blackTime}
             onConfirm={confirmMove}
             onCancel={cancelSelection}
             pending={!!pending}
@@ -336,12 +368,26 @@ export default function Home() {
             engineReady={engineReady}
           />
 
-          <div className="border-t border-stone-200 px-4 py-3 bg-stone-50 flex items-center justify-between">
-            <span className="text-xs text-stone-400">Robot</span>
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stone-500">Game Mode</span>
+              <button
+                role="switch"
+                aria-checked={localMode}
+                onClick={() => setLocalMode(v => !v)}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none ${
+                  localMode ? 'bg-[#1d4ed8]' : 'bg-stone-300'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  localMode ? 'translate-x-[18px]' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
             <button
               onClick={resetBoard}
-              disabled={connectionStatus === 'disconnected'}
-              className="text-xs px-3 py-1.5 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-100 transition-colors disabled:opacity-40"
+              disabled={!localMode && connectionStatus === 'disconnected'}
+              className="text-xs px-3 py-2 rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Reset Board
             </button>
