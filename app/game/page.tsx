@@ -15,7 +15,7 @@ import {
 import { useChessSocket, ServerEvent, buildFen, STARTING_BOARD } from '@/app/lib/socket'
 import { useStockfish } from '@/app/lib/stockfish'
 import ChessBoard from '@/app/components/ChessBoard'
-import RightPanel from '@/app/components/RightPanel'
+import RightPanel, { GameControls } from '@/app/components/RightPanel'
 import StatusHeader from '@/app/components/StatusHeader'
 
 export type PlayerKind = 'human' | 'ai'
@@ -364,31 +364,18 @@ export default function Home() {
             players={players}
             onPlayersChange={setPlayers}
             engineReady={engineReady}
+            localMode={localMode}
+            onLocalModeChange={setLocalMode}
+            onReset={resetBoard}
           />
 
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-stone-500">Game Mode</span>
-              <button
-                role="switch"
-                aria-checked={localMode}
-                onClick={() => setLocalMode(v => !v)}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none ${
-                  localMode ? 'bg-[#1d4ed8]' : 'bg-stone-300'
-                }`}
-              >
-                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                  localMode ? 'translate-x-[18px]' : 'translate-x-0.5'
-                }`} />
-              </button>
-            </div>
-            <button
-              onClick={resetBoard}
-              className="text-xs px-3 py-2 rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors"
-            >
-              Reset Board
-            </button>
-          </div>
+          {/* Game Mode + Reset — desktop only (mobile shows these below Captured Pieces) */}
+          <GameControls
+            localMode={localMode}
+            onLocalModeChange={setLocalMode}
+            onReset={resetBoard}
+            className="hidden md:flex px-4 py-3"
+          />
         </div>
       </main>
     </div>

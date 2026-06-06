@@ -26,6 +26,48 @@ interface RightPanelProps {
   players: PlayerConfig
   onPlayersChange: (p: PlayerConfig) => void
   engineReady: boolean
+  localMode: boolean
+  onLocalModeChange: (v: boolean) => void
+  onReset: () => void
+}
+
+/** Game Mode toggle + Reset Board. Display/padding supplied via className. */
+export function GameControls({
+  localMode,
+  onLocalModeChange,
+  onReset,
+  className = '',
+}: {
+  localMode: boolean
+  onLocalModeChange: (v: boolean) => void
+  onReset: () => void
+  className?: string
+}) {
+  return (
+    <div className={`items-center justify-between ${className}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-stone-500">Game Mode</span>
+        <button
+          role="switch"
+          aria-checked={localMode}
+          onClick={() => onLocalModeChange(!localMode)}
+          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none ${
+            localMode ? 'bg-[#1d4ed8]' : 'bg-stone-300'
+          }`}
+        >
+          <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            localMode ? 'translate-x-[18px]' : 'translate-x-0.5'
+          }`} />
+        </button>
+      </div>
+      <button
+        onClick={onReset}
+        className="text-xs px-3 py-2 rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors"
+      >
+        Reset Board
+      </button>
+    </div>
+  )
 }
 
 function PlayerCard({
@@ -206,6 +248,9 @@ export default function RightPanel({
   players,
   onPlayersChange,
   engineReady,
+  localMode,
+  onLocalModeChange,
+  onReset,
 }: RightPanelProps) {
   const isDisabled = connectionStatus === 'disconnected'
   const isGameOver = gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw'
@@ -283,6 +328,13 @@ export default function RightPanel({
           />
         </section>
 
+        {/* Game Mode + Reset — mobile only (desktop has these pinned at panel bottom) */}
+        <GameControls
+          localMode={localMode}
+          onLocalModeChange={onLocalModeChange}
+          onReset={onReset}
+          className="flex md:hidden -mx-4 sm:-mx-6 px-4 sm:px-6 pt-5 border-t border-stone-200"
+        />
 
       </div>
 
