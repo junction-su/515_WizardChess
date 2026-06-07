@@ -18,6 +18,32 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@keyframes attack-rpg {
+  0%   { transform: translateX(0px);    opacity: 0; }
+  15%  { transform: translateX(60px);   opacity: 1; }
+  65%  { transform: translateX(260px);  opacity: 1; }
+  100% { transform: translateX(420px);  opacity: 0; }
+}
+
+.attack-rpg {
+  animation: attack-rpg 1.0s ease-in-out forwards;
+}
+
+@keyframes attack-video-pop {
+  0%   { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.attack-video {
+  /* The clip already plays out its own attack motion (the statue lunges
+     within frame), so an external slide on top reads as two overlapping
+     moves. Just pop/fade it in at a fixed spot and let the clip carry all
+     the motion. No fade-out: the video's `ended` event unmounts this
+     element, and a CSS fade on a fixed clock can finish slightly before
+     `ended` fires, leaving an invisible gap at the tail of playback. */
+  animation: attack-video-pop 0.25s ease-out forwards;
+}
+
 .team-da-spacing {
   letter-spacing: 15.82px;
 }

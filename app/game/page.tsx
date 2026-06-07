@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Chess, Square } from 'chess.js'
+import { Chess, Square, PieceSymbol, Color } from 'chess.js'
 import {
   BoardPiece,
   LastMove,
@@ -17,6 +17,7 @@ import { useStockfish } from '@/app/lib/stockfish'
 import ChessBoard from '@/app/components/ChessBoard'
 import RightPanel from '@/app/components/RightPanel'
 import StatusHeader from '@/app/components/StatusHeader'
+import AttackAnimation from '@/app/components/AttackAnimation'
 
 export type PlayerKind = 'human' | 'ai'
 export interface PlayerConfig { w: PlayerKind; b: PlayerKind }
@@ -44,6 +45,7 @@ function useChessGame() {
   const [announcement, setAnnouncement] = useState('')
   const [players, setPlayers] = useState<PlayerConfig>({ w: 'human', b: 'human' })
   const [localMode, setLocalMode] = useState(false)
+  const [attackAnim, setAttackAnim] = useState<{ piece: PieceSymbol; color: Color } | null>(null)
 
   const handleServerEvent = useCallback((e: ServerEvent) => {
     const chess = chessRef.current
@@ -122,7 +124,9 @@ function useChessGame() {
 
   const engine = useStockfish()
 
-  const localMove = useCallback((from: Square, to: Square): boolean => {
+  const pendingLocalMoveRef = useRef<{ from: Square; to: Square } | null>(null)
+
+  const localMove = useCallback((from: Square, to: Square, skipAnim = false): boolean => {
     const chess = chessRef.current
     let result
     try { result = chess.move({ from, to, promotion: 'q' }) }
@@ -133,6 +137,8 @@ function useChessGame() {
     const captured = result.captured
       ? { type: result.captured, color: result.color === 'w' ? 'b' : 'w', square: result.to as Square } as BoardPiece
       : undefined
+
+    if (captured && !skipAnim) setAttackAnim({ piece: result.piece, color: result.color })
 
     const lm: LastMove = { from: result.from as Square, to: result.to as Square, san: result.san, piece: moved, captured }
     setLastMove(lm)
@@ -203,10 +209,29 @@ function useChessGame() {
     })
   }, [gameStatus, connectionStatus, pending, illegalReason, clearIllegal, players, localMode])
 
+  const flushPendingLocalMove = useCallback(() => {
+    const pending = pendingLocalMoveRef.current
+    if (!pending) return
+    pendingLocalMoveRef.current = null
+    localMove(pending.from, pending.to, true)
+  }, [localMove])
+
   const confirmMove = useCallback(() => {
     if (!selection.from || !selection.to || !selection.piece) return
     if (localMode) {
-      localMove(selection.from, selection.to)
+      const chess = chessRef.current
+      const legalMoves = chess.moves({ square: selection.from, verbose: true })
+      const matchingMove = legalMoves.find(m => m.to === selection.to)
+      const isCapture = !!(matchingMove as any)?.captured
+
+      if (isCapture) {
+        pendingLocalMoveRef.current = { from: selection.from, to: selection.to }
+        setAttackAnim({ piece: selection.piece.type, color: selection.piece.color })
+        setSelection(EMPTY_SELECTION)
+        setLegalMoves([])
+      } else {
+        localMove(selection.from, selection.to)
+      }
       return
     }
     const ok = sendMove(selection.from, selection.to)
@@ -244,7 +269,7 @@ function useChessGame() {
     gameStatus, selection, legalMoves, announcement, connectionStatus,
     pending, illegalReason,
     players, setPlayers, engineReady: engine.ready,
-    localMode, setLocalMode,
+    localMode, setLocalMode, attackAnim, setAttackAnim, flushPendingLocalMove,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   }
 }
@@ -306,7 +331,7 @@ export default function Home() {
     gameStatus, selection, legalMoves, announcement, connectionStatus,
     pending, illegalReason,
     players, setPlayers, engineReady,
-    localMode, setLocalMode,
+    localMode, setLocalMode, attackAnim, setAttackAnim, flushPendingLocalMove,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   } = useChessGame()
 
@@ -343,6 +368,16 @@ export default function Home() {
             lastMove={lastMove}
             onReset={resetBoard}
           />
+          {attackAnim && (
+            <AttackAnimation
+              piece={attackAnim.piece}
+              color={attackAnim.color}
+              onComplete={() => {
+                setAttackAnim(null)
+                flushPendingLocalMove()
+              }}
+            />
+          )}
         </div>
 
         <div className="h-px md:hidden bg-stone-200 shrink-0" />
