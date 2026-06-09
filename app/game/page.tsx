@@ -57,7 +57,7 @@ function useChessGame() {
   const [legalMoves, setLegalMoves] = useState<LegalMoveSquare[]>([])
   const [announcement, setAnnouncement] = useState('')
   const [players, setPlayers] = useState<PlayerConfig>({ w: 'human', b: 'human' })
-  const [localMode, setLocalMode] = useState(false)
+  const [localMode, setLocalMode] = useState(true)
   const [attackAnim, setAttackAnim] = useState<AttackAnimState | null>(null)
   const nextAttackAnimIdRef = useRef(0)
 
