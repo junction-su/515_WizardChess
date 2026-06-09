@@ -94,17 +94,17 @@ function CapturedCard({
     <div className="flex rounded-lg border border-stone-200 overflow-hidden">
       <div className="flex-1 px-3 py-2.5 border-r border-stone-200">
         <div className="text-xs text-stone-400 mb-2 text-center">White</div>
-        <div className="flex flex-wrap gap-0.5 min-h-[24px] items-center justify-center">
+        <div className="flex flex-wrap gap-1.5 min-h-[44px] items-center justify-center">
           {capturedByWhite.map((p, i) => (
-            <ChessPiece key={i} type={p.type} color={p.color} size={22} />
+            <ChessPiece key={i} type={p.type} color={p.color} size={40} />
           ))}
         </div>
       </div>
       <div className="flex-1 px-3 py-2.5">
         <div className="text-xs text-stone-400 mb-2 text-center">Black</div>
-        <div className="flex flex-wrap gap-0.5 min-h-[24px] items-center justify-center">
+        <div className="flex flex-wrap gap-1.5 min-h-[44px] items-center justify-center">
           {capturedByBlack.map((p, i) => (
-            <ChessPiece key={i} type={p.type} color={p.color} size={22} />
+            <ChessPiece key={i} type={p.type} color={p.color} size={40} />
           ))}
         </div>
       </div>
@@ -126,7 +126,6 @@ function MoveControlContent({
   selectionText,
   canConfirm,
   hasFrom,
-  selection,
   onConfirm,
   onCancel,
   pending,
@@ -137,7 +136,6 @@ function MoveControlContent({
   selectionText: string | null
   canConfirm: boolean
   hasFrom: boolean
-  selection: MoveSelection
   onConfirm: () => void
   onCancel: () => void
   pending: boolean
@@ -219,7 +217,7 @@ export default function RightPanel({
 
   const moveControlProps = {
     isDisabled, isGameOver, selectionText, canConfirm,
-    hasFrom: !!selection.from, selection, onConfirm, onCancel,
+    hasFrom: !!selection.from, onConfirm, onCancel,
     pending, illegalReason,
   }
 
