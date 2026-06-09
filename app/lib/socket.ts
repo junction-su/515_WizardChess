@@ -14,6 +14,8 @@ function defaultWsUrl(): string {
 }
 export const STARTING_BOARD = 'rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR'
 
+const BOARD_SYNC_DISABLED = process.env.NEXT_PUBLIC_DISABLE_BOARD_SYNC === 'true'
+
 export type ServerEvent =
   | { kind: 'done'; from: Square; to: Square }
   | { kind: 'state'; board64: string; turn: 'w' | 'b' }
@@ -65,7 +67,7 @@ export function buildFen(board64: string, turn: 'w' | 'b'): string {
 export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
   const url = process.env.NEXT_PUBLIC_WS_URL || defaultWsUrl()
 
-  const [status, setStatus] = useState<ConnectionStatus>('syncing')
+  const [status, setStatus] = useState<ConnectionStatus>(BOARD_SYNC_DISABLED ? 'disconnected' : 'syncing')
   const [pending, setPending] = useState<PendingMove | null>(null)
   const [illegalReason, setIllegalReason] = useState<string | null>(null)
 
@@ -155,6 +157,7 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
   }, [])
 
   useEffect(() => {
+    if (BOARD_SYNC_DISABLED) return
     unmounted.current = false
 
     const scheduleReconnect = () => {
