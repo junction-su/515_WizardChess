@@ -3,6 +3,7 @@
 import { BoardPiece, LastMove, GameStatus, pieceLabel, moveDescription } from '@/app/lib/chess'
 import { Square } from 'chess.js'
 import ChessPiece from './ChessPiece'
+import GameModeRow from './GameModeRow'
 import { PlayerConfig } from '@/app/game/page'
 
 interface MoveSelection {
@@ -26,6 +27,9 @@ interface RightPanelProps {
   players: PlayerConfig
   onPlayersChange: (p: PlayerConfig) => void
   engineReady: boolean
+  localMode: boolean
+  onLocalModeChange: (v: boolean) => void
+  onResetBoard: () => void
 }
 
 function PlayerCard({
@@ -204,6 +208,9 @@ export default function RightPanel({
   players,
   onPlayersChange,
   engineReady,
+  localMode,
+  onLocalModeChange,
+  onResetBoard,
 }: RightPanelProps) {
   const isDisabled = connectionStatus === 'disconnected'
   const isGameOver = gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw'
@@ -281,6 +288,18 @@ export default function RightPanel({
           />
         </section>
 
+        {/* Game Mode + Reset — mobile only. Lives in the scrollable column
+            (not fixed) right after Captured Pieces, so the mobile Move
+            Control bar pinned to the screen bottom never covers it. Desktop/
+            tablet keep the row in its original spot below the panel. */}
+        <section className="flex items-center justify-between md:hidden">
+          <GameModeRow
+            localMode={localMode}
+            onLocalModeChange={onLocalModeChange}
+            onResetBoard={onResetBoard}
+            isDisabled={isDisabled}
+          />
+        </section>
 
       </div>
 
