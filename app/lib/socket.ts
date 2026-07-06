@@ -3,24 +3,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ConnectionStatus, Square } from './chess'
 
-// Connect to the broker running inside server.mjs on the same host.
-// Using window.location.host means any device on the LAN can open the UI
-// and automatically reach the right broker without hardcoding an IP.
+// Connect to the broker running inside server.mjs. The broker now rides on
+// the same HTTP server/port as Next.js, so same-origin /ws always reaches it
+// — locally, on the LAN, and on a cloud host.
 function defaultWsUrl(): string {
-  if (typeof window === 'undefined') return 'ws://localhost:3001/ws'
+  if (typeof window === 'undefined') return 'ws://localhost:3000/ws'
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // hostname (no port) + explicit broker port 3001
-  return `${proto}//${window.location.hostname}:3001/ws`
+  return `${proto}//${window.location.host}/ws`
 }
 export const STARTING_BOARD = 'rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR'
 
 const BOARD_SYNC_DISABLED = process.env.NEXT_PUBLIC_DISABLE_BOARD_SYNC === 'true'
+const ROOM_STORAGE_KEY = 'wizard-chess-room'
 
 export type ServerEvent =
   | { kind: 'done'; from: Square; to: Square }
-  | { kind: 'state'; board64: string; turn: 'w' | 'b' }
+  | { kind: 'state'; board64: string; turn: 'w' | 'b'; fen?: string }
   | { kind: 'turn'; turn: 'w' | 'b' }
   | { kind: 'illegal'; reason: string }
+  | { kind: 'room'; code: string; color: 'w' | 'b' | null; peerConnected: boolean }
+  | { kind: 'peer'; connected: boolean }
+  | { kind: 'error'; reason: string }
 
 export interface PendingMove {
   from: Square
@@ -32,6 +35,12 @@ export interface ChessSocket {
   status: ConnectionStatus
   pending: PendingMove | null
   illegalReason: string | null
+  roomCode: string | null
+  myColor: 'w' | 'b' | null
+  peerConnected: boolean
+  createRoom: () => void
+  joinRoom: (code: string) => void
+  leaveRoom: () => void
   sendMove: (from: Square, to: Square) => boolean
   sendReset: () => void
   requestState: () => void
@@ -70,6 +79,14 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
   const [status, setStatus] = useState<ConnectionStatus>(BOARD_SYNC_DISABLED ? 'disconnected' : 'syncing')
   const [pending, setPending] = useState<PendingMove | null>(null)
   const [illegalReason, setIllegalReason] = useState<string | null>(null)
+  const [roomCode, setRoomCode] = useState<string | null>(null)
+  const [myColor, setMyColor] = useState<'w' | 'b' | null>(null)
+  const [peerConnected, setPeerConnected] = useState(false)
+
+  // Room we want to be in — survives reconnects so we rejoin automatically.
+  const desiredRoomRef = useRef<string | null>(
+    typeof window !== 'undefined' ? sessionStorage.getItem(ROOM_STORAGE_KEY) : null
+  )
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttempt = useRef(0)
@@ -147,7 +164,32 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
           kind: 'state',
           board64: m.board,
           turn: m.turn === 'WHITE' ? 'w' : 'b',
+          fen: typeof m.fen === 'string' ? m.fen : undefined,
         })
+        return
+      }
+      case 'room': {
+        if (typeof m.code !== 'string') return
+        const color = m.color === 'w' || m.color === 'b' ? m.color : null
+        setRoomCode(m.code)
+        setMyColor(color)
+        setPeerConnected(m.peerConnected === true)
+        desiredRoomRef.current = m.code
+        try { sessionStorage.setItem(ROOM_STORAGE_KEY, m.code) } catch { /* ignore */ }
+        onEventRef.current({ kind: 'room', code: m.code, color, peerConnected: m.peerConnected === true })
+        return
+      }
+      case 'peer': {
+        setPeerConnected(m.connected === true)
+        onEventRef.current({ kind: 'peer', connected: m.connected === true })
+        return
+      }
+      case 'error': {
+        const reason = typeof m.reason === 'string' ? m.reason : 'Server error'
+        // A failed join means the stored room is stale — stop retrying it.
+        desiredRoomRef.current = null
+        try { sessionStorage.removeItem(ROOM_STORAGE_KEY) } catch { /* ignore */ }
+        onEventRef.current({ kind: 'error', reason })
         return
       }
       case 'log':
@@ -183,6 +225,10 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
         reconnectAttempt.current = 0
         setStatus('connected')
         console.log('[socket] open', url)
+        // Rejoin the room we were in before the connection dropped.
+        if (desiredRoomRef.current) {
+          ws.send(JSON.stringify({ type: 'join', room: desiredRoomRef.current }))
+        }
       }
       ws.onmessage = (ev) => {
         const data = typeof ev.data === 'string' ? ev.data : ''
@@ -251,5 +297,34 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
 
   const clearIllegal = useCallback(() => setIllegalReason(null), [])
 
-  return { status, pending, illegalReason, sendMove, sendReset, requestState, clearIllegal }
+  const createRoom = useCallback(() => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify({ type: 'create' }))
+  }, [])
+
+  const joinRoom = useCallback((code: string) => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify({ type: 'join', room: code.toUpperCase().trim() }))
+  }, [])
+
+  const leaveRoom = useCallback(() => {
+    desiredRoomRef.current = null
+    try { sessionStorage.removeItem(ROOM_STORAGE_KEY) } catch { /* ignore */ }
+    setRoomCode(null)
+    setMyColor(null)
+    setPeerConnected(false)
+    const ws = wsRef.current
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'leave' }))
+    }
+  }, [])
+
+  return {
+    status, pending, illegalReason,
+    roomCode, myColor, peerConnected,
+    createRoom, joinRoom, leaveRoom,
+    sendMove, sendReset, requestState, clearIllegal,
+  }
 }

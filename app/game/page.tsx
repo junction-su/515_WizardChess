@@ -58,6 +58,7 @@ function useChessGame() {
   const [announcement, setAnnouncement] = useState('')
   const [players, setPlayers] = useState<PlayerConfig>({ w: 'human', b: 'human' })
   const [localMode, setLocalMode] = useState(true)
+  const [lobbyOpen, setLobbyOpen] = useState(true)
   const [attackAnim, setAttackAnim] = useState<AttackAnimState | null>(null)
   const nextAttackAnimIdRef = useRef(0)
 
@@ -72,7 +73,9 @@ function useChessGame() {
     if (e.kind === 'state') {
       const wasStart = e.board64 === STARTING_BOARD
       try {
-        chess.load(buildFen(e.board64, e.turn))
+        // Prefer the server's full FEN (castling/en-passant exact); fall back
+        // to rebuilding from the 64-char board for older senders.
+        chess.load(e.fen ?? buildFen(e.board64, e.turn))
       } catch {
         chessRef.current = new Chess()
       }
@@ -136,10 +139,46 @@ function useChessGame() {
       setAnnouncement(`Illegal move: ${e.reason}`)
       return
     }
+
+    if (e.kind === 'room') {
+      // Entered a room (create/join/auto-rejoin) — switch to online play.
+      setLocalMode(false)
+      setLobbyOpen(false)
+      setAnnouncement(
+        e.color
+          ? `Joined room ${e.code} as ${e.color === 'w' ? 'White' : 'Black'}.`
+          : `Watching room ${e.code} as a spectator.`
+      )
+      return
+    }
+
+    if (e.kind === 'peer') {
+      setAnnouncement(e.connected ? 'Opponent connected.' : 'Opponent disconnected.')
+      return
+    }
+
+    if (e.kind === 'error') {
+      setAnnouncement(e.reason)
+      return
+    }
   }, [])
 
   const socket = useChessSocket(handleServerEvent)
-  const { status: connectionStatus, pending, illegalReason, sendMove, sendReset, clearIllegal } = socket
+  const {
+    status: connectionStatus, pending, illegalReason,
+    roomCode, myColor, peerConnected, createRoom, joinRoom, leaveRoom,
+    sendMove, sendReset, clearIllegal,
+  } = socket
+
+  // Auto-join a room from a shared link (/game?room=CODE) once connected.
+  const urlJoinDoneRef = useRef(false)
+  useEffect(() => {
+    if (urlJoinDoneRef.current) return
+    if (connectionStatus !== 'connected') return
+    const code = new URLSearchParams(window.location.search).get('room')
+    urlJoinDoneRef.current = true
+    if (code && !roomCode) joinRoom(code)
+  }, [connectionStatus, roomCode, joinRoom])
 
   const engine = useStockfish()
   const engineReady = engine.ready
@@ -211,6 +250,8 @@ function useChessGame() {
   const aiRequestIdRef = useRef(0)
   useEffect(() => {
     if (aiThinkingRef.current) return
+    // Online rooms are human-vs-human; the seat's color is fixed server-side.
+    if (!localMode && roomCode) return
     if (players[currentTurn] !== 'ai') return
     if (attackAnim || pendingLocalMoveRef.current) return
     if (gameStatus !== 'playing' && gameStatus !== 'check') return
@@ -292,13 +333,15 @@ function useChessGame() {
         aiThinkingRef.current = false
       }
     }
-  }, [players, currentTurn, gameStatus, connectionStatus, pending, attackAnim, getBestMove, sendMove, localMode, localMove])
+  }, [players, currentTurn, gameStatus, connectionStatus, pending, attackAnim, getBestMove, sendMove, localMode, localMove, roomCode])
 
   const selectSquare = useCallback((square: Square, piece: BoardPiece | null) => {
     const chess = chessRef.current
     if (gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw') return
     if (!localMode && connectionStatus === 'disconnected') return
     if (!localMode && pending) return
+    // Online: you can only move on your own turn (spectators never move).
+    if (!localMode && roomCode && myColor !== chess.turn()) return
     if (players[chess.turn()] === 'ai') return
 
     if (illegalReason) clearIllegal()
@@ -319,7 +362,7 @@ function useChessGame() {
       }
       return { ...prev, to: square }
     })
-  }, [gameStatus, connectionStatus, pending, illegalReason, clearIllegal, players, localMode])
+  }, [gameStatus, connectionStatus, pending, illegalReason, clearIllegal, players, localMode, roomCode, myColor])
 
   const flushPendingLocalMove = useCallback(() => {
     const pending = pendingLocalMoveRef.current
@@ -390,14 +433,109 @@ function useChessGame() {
     sendReset()
   }, [sendReset, localMode])
 
+  // Game Mode toggle: local ⇆ online. Going local leaves the room; going
+  // online without a room opens the lobby to create/join one.
+  const changeMode = useCallback((local: boolean) => {
+    if (local) {
+      leaveRoom()
+      setLocalMode(true)
+      setLobbyOpen(false)
+    } else {
+      setLocalMode(false)
+      if (!roomCode) setLobbyOpen(true)
+    }
+  }, [leaveRoom, roomCode])
+
   return {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
     pending, illegalReason,
     players, setPlayers, engineReady,
-    localMode, setLocalMode, attackAnim, setAttackAnim, flushPendingLocalMove,
+    localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
+    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, createRoom, joinRoom,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   }
+}
+
+function LobbyOverlay({
+  connectionStatus,
+  onLocalPlay,
+  onCreateRoom,
+  onJoinRoom,
+}: {
+  connectionStatus: 'connected' | 'disconnected' | 'syncing'
+  onLocalPlay: () => void
+  onCreateRoom: () => void
+  onJoinRoom: (code: string) => void
+}) {
+  const [joinCode, setJoinCode] = useState('')
+  const online = connectionStatus === 'connected'
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center z-40 p-4"
+      style={{ background: 'rgba(237, 239, 243, 0.76)', backdropFilter: 'blur(4px)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose game mode"
+    >
+      <div className="bg-white border border-[#d8dde7] rounded-2xl shadow-2xl px-8 py-8 flex flex-col gap-5 w-full max-w-[360px]">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-[#1c1917] tracking-tight">Play Chess</div>
+          <div className="text-sm text-stone-500 mt-1">Choose how you want to play</div>
+        </div>
+
+        <button
+          onClick={onLocalPlay}
+          className="h-[48px] rounded-xl border border-[#c4c7ce] text-[#1c1917] font-semibold text-sm hover:bg-stone-50 transition-colors"
+          autoFocus
+        >
+          Local Play
+        </button>
+
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <div className="flex-1 h-px bg-stone-200" />
+          <span className="text-xs text-stone-400 uppercase tracking-widest">Online</span>
+          <div className="flex-1 h-px bg-stone-200" />
+        </div>
+
+        <button
+          onClick={onCreateRoom}
+          disabled={!online}
+          className="h-[48px] rounded-xl bg-[#1d4ed8] text-white font-semibold text-sm hover:bg-[#1e40af] transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Create Room
+        </button>
+
+        <div className="flex gap-2">
+          <input
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 4))}
+            placeholder="CODE"
+            maxLength={4}
+            aria-label="Room code"
+            className="flex-1 min-w-0 h-[48px] rounded-xl border border-[#c4c7ce] px-4 text-center font-mono text-lg tracking-[0.3em] uppercase placeholder:text-stone-300 placeholder:tracking-[0.3em] focus:outline-none focus:ring-2 focus:ring-[#4091ff]"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && joinCode.length === 4 && online) onJoinRoom(joinCode)
+            }}
+          />
+          <button
+            onClick={() => onJoinRoom(joinCode)}
+            disabled={!online || joinCode.length !== 4}
+            className="h-[48px] px-5 rounded-xl border border-[#1d4ed8] text-[#1d4ed8] font-semibold text-sm hover:bg-[#f5f9ff] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Join
+          </button>
+        </div>
+
+        {!online && (
+          <div className="text-xs text-stone-400 text-center">
+            Connecting to server… online play will enable shortly.
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function GameOverOverlay({
@@ -457,9 +595,12 @@ export default function Home() {
     gameStatus, selection, legalMoves, announcement, connectionStatus,
     pending, illegalReason,
     players, setPlayers, engineReady,
-    localMode, setLocalMode, attackAnim, setAttackAnim, flushPendingLocalMove,
+    localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
+    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, createRoom, joinRoom,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   } = useChessGame()
+
+  const online = !localMode && !!roomCode
 
   return (
     <div className="flex flex-col min-h-screen md:h-screen bg-[#edeff3]">
@@ -468,6 +609,15 @@ export default function Home() {
       </div>
 
       <StatusHeader status={connectionStatus} />
+
+      {lobbyOpen && (
+        <LobbyOverlay
+          connectionStatus={connectionStatus}
+          onLocalPlay={() => changeMode(true)}
+          onCreateRoom={createRoom}
+          onJoinRoom={joinRoom}
+        />
+      )}
 
       <main className="flex flex-col md:flex-row md:flex-1 md:overflow-hidden">
         {/* Board area */}
@@ -482,6 +632,7 @@ export default function Home() {
             inCheck={gameStatus === 'check' || gameStatus === 'checkmate'}
             currentTurn={currentTurn}
             onSquareClick={selectSquare}
+            flipped={online && myColor === 'b'}
           />
           {pending && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white/95 border border-stone-200 shadow rounded-full px-4 py-1.5 text-xs font-medium text-stone-700">
@@ -528,8 +679,11 @@ export default function Home() {
             onPlayersChange={setPlayers}
             engineReady={engineReady}
             localMode={localMode}
-            onLocalModeChange={setLocalMode}
+            onLocalModeChange={changeMode}
             onResetBoard={resetBoard}
+            roomCode={online ? roomCode : null}
+            myColor={myColor}
+            peerConnected={peerConnected}
           />
 
           {/* Game Mode + Reset — desktop/tablet only; mobile renders this
@@ -537,7 +691,7 @@ export default function Home() {
           <div className="hidden md:flex px-4 pt-3 pb-3 items-center justify-between border-t border-[#e0e4ec]">
             <GameModeRow
               localMode={localMode}
-              onLocalModeChange={setLocalMode}
+              onLocalModeChange={changeMode}
               onResetBoard={resetBoard}
               isDisabled={connectionStatus === 'disconnected'}
             />

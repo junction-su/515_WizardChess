@@ -30,6 +30,9 @@ interface RightPanelProps {
   localMode: boolean
   onLocalModeChange: (v: boolean) => void
   onResetBoard: () => void
+  roomCode?: string | null
+  myColor?: 'w' | 'b' | null
+  peerConnected?: boolean
 }
 
 function PlayerCard({
@@ -39,6 +42,8 @@ function PlayerCard({
   playerKind,
   engineReady,
   onPlayersChange,
+  online,
+  isMe,
 }: {
   color: 'w' | 'b'
   isActive: boolean
@@ -46,6 +51,8 @@ function PlayerCard({
   playerKind: 'human' | 'ai'
   engineReady: boolean
   onPlayersChange: (kind: 'human' | 'ai') => void
+  online: boolean
+  isMe: boolean
 }) {
   const label = color === 'w'
     ? (isActive && !isGameOver ? "White's turn" : 'White')
@@ -65,24 +72,63 @@ function PlayerCard({
       }`}>
         {label}
       </span>
-      <div className="flex items-center gap-1.5 mt-0.5">
-        <span className={`text-xs font-medium transition-colors ${
-          playerKind === 'ai' ? 'text-[#1d4ed8]' : 'text-stone-400'
-        }`}>AI</span>
-        <button
-          onClick={() => onPlayersChange(playerKind === 'ai' ? 'human' : 'ai')}
-          disabled={!engineReady && playerKind === 'human'}
-          role="switch"
-          aria-checked={playerKind === 'ai'}
-          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4091ff] disabled:opacity-40 ${
-            playerKind === 'ai' ? 'bg-[#1d4ed8]' : 'bg-stone-300'
-          }`}
-        >
-          <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            playerKind === 'ai' ? 'translate-x-[18px]' : 'translate-x-0.5'
-          }`} />
-        </button>
+      {online ? (
+        <span className={`text-xs font-medium mt-0.5 px-2 py-0.5 rounded-full ${
+          isMe ? 'bg-[#1d4ed8] text-white' : 'text-stone-400'
+        }`}>
+          {isMe ? 'You' : 'Opponent'}
+        </span>
+      ) : (
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className={`text-xs font-medium transition-colors ${
+            playerKind === 'ai' ? 'text-[#1d4ed8]' : 'text-stone-400'
+          }`}>AI</span>
+          <button
+            onClick={() => onPlayersChange(playerKind === 'ai' ? 'human' : 'ai')}
+            disabled={!engineReady && playerKind === 'human'}
+            role="switch"
+            aria-checked={playerKind === 'ai'}
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4091ff] disabled:opacity-40 ${
+              playerKind === 'ai' ? 'bg-[#1d4ed8]' : 'bg-stone-300'
+            }`}
+          >
+            <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+              playerKind === 'ai' ? 'translate-x-[18px]' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RoomInfoCard({
+  roomCode,
+  peerConnected,
+}: {
+  roomCode: string
+  peerConnected: boolean
+}) {
+  const copyInvite = () => {
+    const url = `${window.location.origin}/game?room=${roomCode}`
+    navigator.clipboard?.writeText(url).catch(() => { /* ignore */ })
+  }
+
+  return (
+    <div className="rounded-lg border border-[#c4c7ce] px-4 py-3 flex items-center justify-between gap-3" style={{ borderWidth: '0.5px' }}>
+      <div className="min-w-0">
+        <div className="text-xs text-stone-400 mb-0.5">Room</div>
+        <div className="font-mono text-xl font-bold tracking-[0.25em] text-[#1c1917]">{roomCode}</div>
+        <div className={`text-xs mt-1 ${peerConnected ? 'text-emerald-600' : 'text-amber-600'}`}>
+          {peerConnected ? '● Opponent connected' : '○ Waiting for opponent…'}
+        </div>
       </div>
+      <button
+        onClick={copyInvite}
+        className="shrink-0 text-xs px-3 py-2 rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors"
+      >
+        Copy invite
+      </button>
     </div>
   )
 }
@@ -211,7 +257,11 @@ export default function RightPanel({
   localMode,
   onLocalModeChange,
   onResetBoard,
+  roomCode = null,
+  myColor = null,
+  peerConnected = false,
 }: RightPanelProps) {
+  const online = !localMode && !!roomCode
   const isDisabled = connectionStatus === 'disconnected'
   const isGameOver = gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw'
   const badge = statusBadge[gameStatus]
@@ -240,6 +290,14 @@ export default function RightPanel({
           </div>
         )}
 
+        {/* Room info — online mode only */}
+        {online && roomCode && (
+          <section>
+            <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Online Room</div>
+            <RoomInfoCard roomCode={roomCode} peerConnected={peerConnected} />
+          </section>
+        )}
+
         {/* Players */}
         <section>
           <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Players</div>
@@ -248,11 +306,13 @@ export default function RightPanel({
               color="w" isActive={currentTurn === 'w'} isGameOver={isGameOver}
               playerKind={players.w} engineReady={engineReady}
               onPlayersChange={(kind) => onPlayersChange({ ...players, w: kind })}
+              online={online} isMe={myColor === 'w'}
             />
             <PlayerCard
               color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver}
               playerKind={players.b} engineReady={engineReady}
               onPlayersChange={(kind) => onPlayersChange({ ...players, b: kind })}
+              online={online} isMe={myColor === 'b'}
             />
           </div>
         </section>

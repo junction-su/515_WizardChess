@@ -14,6 +14,8 @@ interface ChessBoardProps {
   inCheck: boolean
   currentTurn: 'w' | 'b'
   onSquareClick: (square: Square, piece: BoardPiece | null) => void
+  /** Rotate the view 180° — online Black sees their pieces at the bottom. */
+  flipped?: boolean
 }
 
 export default function ChessBoard({
@@ -26,6 +28,7 @@ export default function ChessBoard({
   inCheck,
   currentTurn,
   onSquareClick,
+  flipped = false,
 }: ChessBoardProps) {
   const legalSquareMap = new Map(legalMoves.map((m) => [m.square, m.isCapture]))
 
@@ -49,9 +52,12 @@ export default function ChessBoard({
     // White card wrapper
     <div className="bg-white rounded-3xl lg:rounded-[40px] pt-1.5 pl-1.5 sm:pt-2.5 sm:pl-2.5 md:pt-2 md:pl-2 lg:pt-3 lg:pl-3 xl:pt-4 xl:pl-4 pb-5 pr-5 sm:pb-6 sm:pr-6 md:pb-5 md:pr-5 lg:pb-8 lg:pr-8 xl:pb-10 xl:pr-10 shadow-lg select-none">
 
-      {/* File labels — top (a–h) */}
+      {/* File labels — top (a–h, or h–a when flipped) */}
       <div className="flex pl-5 sm:pl-6 mb-1" aria-hidden="true">
-        {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((file) => (
+        {(flipped
+          ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
+          : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+        ).map((file) => (
           <div
             key={file}
             className="w-10 sm:w-14 md:w-12 lg:w-16 xl:w-20 2xl:w-24 text-center text-xs sm:text-sm font-mono text-[#78716c]"
@@ -64,7 +70,7 @@ export default function ChessBoard({
       {/* Board: rank labels column (outside clip) + squares grid (overflow-hidden) */}
       <div className="flex">
         {/* Rank labels — separate column, not inside the clipped grid */}
-        <div className="flex flex-col-reverse shrink-0 w-5 sm:w-6" aria-hidden="true">
+        <div className={`${flipped ? 'flex-col' : 'flex-col-reverse'} flex shrink-0 w-5 sm:w-6`} aria-hidden="true">
           {board.map((_, rowIdx) => (
             <div
               key={rowIdx}
@@ -77,9 +83,9 @@ export default function ChessBoard({
 
         {/* Squares grid — overflow-hidden so all 4 corners are rounded */}
         <div className="overflow-hidden rounded-2xl" role="grid" aria-label="Chess board">
-          <div className="flex flex-col-reverse">
+          <div className={`flex ${flipped ? 'flex-col' : 'flex-col-reverse'}`}>
             {board.map((rowPieces, rowIdx) => (
-              <div key={rowIdx} className="flex" role="row">
+              <div key={rowIdx} className={`flex ${flipped ? 'flex-row-reverse' : ''}`} role="row">
                 {rowPieces.map((piece, colIdx) => {
                   const sq = colRowToSquare(colIdx, rowIdx)
                   const light = isLight(rowIdx, colIdx)

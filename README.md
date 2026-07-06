@@ -1,5 +1,21 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Online Multiplayer
+
+`npm run dev` starts the UI **and** the WebSocket broker on one port (3000).
+Two players anywhere can play the same game:
+
+1. Player A opens `/game` → **Create Room** → shares the 4-letter code (or the Copy invite link).
+2. Player B opens `/game` → **Join Room** with the code (or opens `/game?room=CODE`).
+3. The server validates every move (chess.js) and enforces turns; the physical
+   board (ESP32 on `/device`, optionally `/device?room=CODE`) replays confirmed moves.
+
+### Deploy to the cloud (Railway/Render)
+
+1. Create a new service from this repo — start command: `npm start` (runs `server.mjs`).
+2. No extra env vars needed; the app binds to `$PORT` and browsers reach the broker at the same origin (`wss://<host>/ws`).
+3. Point the ESP32 at `wss://<host>/device`.
+
 ## Getting Started
 
 First, run the development server:
