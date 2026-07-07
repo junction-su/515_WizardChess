@@ -4,22 +4,29 @@ import { WebSocketServer } from 'ws'
 import { Chess } from 'chess.js'
 import next from 'next'
 
-const dev  = process.env.NODE_ENV !== 'production'
-const port = parseInt(process.env.PORT || '3000', 10)
+const dev        = process.env.NODE_ENV !== 'production'
+const port       = parseInt(process.env.PORT || '3000', 10)
+const brokerOnly = process.env.BROKER_ONLY === 'true'
 
 // ── Next.js UI + WS broker on ONE port ────────────────────────────────────────
 // Cloud hosts (Railway/Render/Fly) expose a single port, so the broker rides
 // on the same HTTP server as Next.js via the `upgrade` event.
 //
+// BROKER_ONLY=true skips the Next.js UI entirely — used when the UI lives on
+// Vercel (which can't run websockets) and only the broker needs a host.
+//
 // Browsers connect to  ws(s)://<host>/ws
 // ESP32-S3 connects to ws(s)://<host>/device[?room=CODE]
 
-const app    = next({ dev })
-const handle = app.getRequestHandler()
-
-await app.prepare()
-// Next's own upgrade handler keeps HMR websockets working in dev.
-const nextUpgrade = typeof app.getUpgradeHandler === 'function' ? app.getUpgradeHandler() : null
+let handle = null
+let nextUpgrade = null
+if (!brokerOnly) {
+  const app = next({ dev })
+  handle = app.getRequestHandler()
+  await app.prepare()
+  // Next's own upgrade handler keeps HMR websockets working in dev.
+  nextUpgrade = typeof app.getUpgradeHandler === 'function' ? app.getUpgradeHandler() : null
+}
 
 // ── Rooms ─────────────────────────────────────────────────────────────────────
 // The server owns game state (chess.js). The physical board is an output
@@ -269,7 +276,13 @@ function asLog(raw) {
 // ── HTTP server ───────────────────────────────────────────────────────────────
 
 const server = createServer(async (req, res) => {
-  await handle(req, res, parse(req.url, true))
+  if (handle) {
+    await handle(req, res, parse(req.url, true))
+  } else {
+    // Broker-only mode: plain 200 keeps Render health checks happy.
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end('Wizard Chess WS broker — connect via /ws (browsers) or /device (ESP32)')
+  }
 })
 
 server.on('upgrade', (req, socket, head) => {
@@ -286,5 +299,9 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 server.listen(port, () => {
-  console.log(`> UI + WS broker ready on http://localhost:${port}  (/ws browsers, /device ESP32)`)
+  console.log(
+    brokerOnly
+      ? `> WS broker ready on port ${port}  (/ws browsers, /device ESP32)`
+      : `> UI + WS broker ready on http://localhost:${port}  (/ws browsers, /device ESP32)`
+  )
 })

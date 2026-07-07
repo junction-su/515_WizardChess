@@ -10,11 +10,26 @@ Two players anywhere can play the same game:
 3. The server validates every move (chess.js) and enforces turns; the physical
    board (ESP32 on `/device`, optionally `/device?room=CODE`) replays confirmed moves.
 
-### Deploy to the cloud (Railway/Render)
+### Deploy: Vercel (UI) + Render (WS broker)
 
-1. Create a new service from this repo — start command: `npm start` (runs `server.mjs`).
-2. No extra env vars needed; the app binds to `$PORT` and browsers reach the broker at the same origin (`wss://<host>/ws`).
-3. Point the ESP32 at `wss://<host>/device`.
+Vercel cannot run websockets, so the broker runs as a tiny separate service:
+
+1. **Render** ([render.com](https://render.com), sign in with GitHub, free tier):
+   New Web Service → connect this repo →
+   Build Command: `npm install` · Start Command: `BROKER_ONLY=true node server.mjs`
+2. **Vercel** → Project Settings → Environment Variables:
+   `NEXT_PUBLIC_WS_URL` = `wss://<your-app>.onrender.com/ws`
+   (remove `NEXT_PUBLIC_DISABLE_BOARD_SYNC` if set — it blocks the socket entirely)
+   → Redeploy.
+3. Point the ESP32 at `wss://<your-app>.onrender.com/device`.
+
+Note: Render's free tier sleeps after 15 min idle — the first connection after a
+break takes ~30 s to wake up ("Connecting to server…" in the lobby).
+
+### Deploy everything on one host (Railway/Render, no Vercel)
+
+Start command `npm start` runs the UI and broker together on `$PORT`; browsers
+reach the broker at the same origin, no env vars needed.
 
 ## Getting Started
 
