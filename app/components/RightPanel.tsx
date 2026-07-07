@@ -134,27 +134,38 @@ function RoomInfoCard({
   }
 
   return (
-    <div className="rounded-lg border border-[#c4c7ce] px-4 py-3 flex items-center justify-between gap-3" style={{ borderWidth: '0.5px' }}>
-      <div className="min-w-0">
-        <div className="text-xs text-stone-400 mb-0.5">Room</div>
+    <div className="rounded-lg border border-[#c4c7ce] px-4 py-3" style={{ borderWidth: '0.5px' }}>
+      <div className="flex items-center justify-between gap-3">
         <div className="font-mono text-xl font-bold tracking-[0.25em] text-[#1c1917]">{roomCode}</div>
-        <div className={`text-xs mt-1 ${peerConnected ? 'text-emerald-600' : 'text-amber-600'}`}>
-          {peerConnected ? '● Opponent connected' : '○ Waiting for opponent…'}
-        </div>
-        <div className={`text-xs mt-0.5 ${boardConnected ? 'text-emerald-600' : 'text-stone-400'}`}>
-          {boardConnected ? '● Physical board linked' : '○ No physical board'}
-        </div>
+        <button
+          onClick={copyInvite}
+          className={`shrink-0 text-xs px-3 py-2 rounded-md border transition-colors ${
+            copied
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+              : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800'
+          }`}
+        >
+          {copied ? '✓ Copied!' : 'Copy invite'}
+        </button>
       </div>
-      <button
-        onClick={copyInvite}
-        className={`shrink-0 text-xs px-3 py-2 rounded-md border transition-colors ${
-          copied
-            ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-            : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800'
-        }`}
-      >
-        {copied ? '✓ Copied!' : 'Copy invite'}
-      </button>
+      <div className="flex flex-wrap gap-1.5 mt-2.5">
+        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${
+          peerConnected
+            ? 'bg-emerald-50 text-emerald-600'
+            : 'bg-amber-50 text-amber-600'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${peerConnected ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
+          {peerConnected ? 'Opponent' : 'Waiting…'}
+        </span>
+        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${
+          boardConnected
+            ? 'bg-emerald-50 text-emerald-600'
+            : 'bg-stone-100 text-stone-400'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${boardConnected ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+          Board
+        </span>
+      </div>
     </div>
   )
 }
