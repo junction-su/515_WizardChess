@@ -67,10 +67,76 @@ function useChessGame() {
     setAttackAnim({ id: nextAttackAnimIdRef.current, piece, color, to })
   }, [])
 
+  const pendingLocalMoveRef = useRef<{ from: Square; to: Square; promotion: 'q' | 'r' | 'b' | 'n' } | null>(null)
+  const pendingLocalMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pendingLocalMoveTimerRef.current) clearTimeout(pendingLocalMoveTimerRef.current)
+    }
+  }, [])
+
+  const applyLocalMove = useCallback((from: Square, to: Square, promotion: 'q' | 'r' | 'b' | 'n' = 'q'): boolean => {
+    const chess = chessRef.current
+    let result
+    try { result = chess.move({ from, to, promotion }) }
+    catch { result = null }
+    if (!result) return false
+
+    const moved: BoardPiece = { type: result.piece, color: result.color, square: result.to as Square }
+    const captured = result.captured
+      ? { type: result.captured, color: result.color === 'w' ? 'b' : 'w', square: result.to as Square } as BoardPiece
+      : undefined
+
+    const lm: LastMove = { from: result.from as Square, to: result.to as Square, san: result.san, piece: moved, captured }
+    setLastMove(lm)
+    if (captured) {
+      if (result.color === 'w') setCapturedByWhite((p) => [...p, captured])
+      else setCapturedByBlack((p) => [...p, captured])
+    }
+    setAnnouncement(moveDescription(lm))
+    setSelection(EMPTY_SELECTION)
+    setLegalMoves([])
+    setBoard(chessBoardToDisplay(chess))
+    setCurrentTurn(chess.turn())
+    setGameStatus(getGameStatus(chess))
+    return true
+  }, [])
+
+  // Play the attack animation first and apply the move when it finishes
+  // (with a timer fallback in case the animation never completes).
+  const deferMoveForAnimation = useCallback((from: Square, to: Square, promotion: 'q' | 'r' | 'b' | 'n' = 'q'): boolean => {
+    const chess = chessRef.current
+    const matchingMove = chess.moves({ square: from, verbose: true }).find((m) => m.to === to)
+    const movingPiece = chess.get(from)
+    if (!matchingMove?.captured || !movingPiece) return false
+
+    pendingLocalMoveRef.current = { from, to, promotion }
+    if (pendingLocalMoveTimerRef.current) clearTimeout(pendingLocalMoveTimerRef.current)
+    pendingLocalMoveTimerRef.current = setTimeout(() => {
+      const pending = pendingLocalMoveRef.current
+      if (!pending) return
+      pendingLocalMoveRef.current = null
+      pendingLocalMoveTimerRef.current = null
+      applyLocalMove(pending.from, pending.to, pending.promotion)
+    }, ATTACK_ANIMATION_FALLBACK_MS)
+    playAttackAnimation(movingPiece.type, movingPiece.color, to)
+    setSelection(EMPTY_SELECTION)
+    setLegalMoves([])
+    return true
+  }, [applyLocalMove, playAttackAnimation])
+
   const handleServerEvent = useCallback((e: ServerEvent) => {
     const chess = chessRef.current
 
     if (e.kind === 'state') {
+      // Full resync replaces everything — drop any deferred move/animation.
+      pendingLocalMoveRef.current = null
+      if (pendingLocalMoveTimerRef.current) {
+        clearTimeout(pendingLocalMoveTimerRef.current)
+        pendingLocalMoveTimerRef.current = null
+      }
+      setAttackAnim(null)
       const wasStart = e.board64 === STARTING_BOARD
       try {
         // Prefer the server's full FEN (castling/en-passant exact); fall back
@@ -94,6 +160,10 @@ function useChessGame() {
     }
 
     if (e.kind === 'done') {
+      // Captures get the attack animation first; the move lands on the board
+      // when it finishes (same flow as local mode).
+      if (deferMoveForAnimation(e.from, e.to)) return
+
       let result
       try {
         result = chess.move({ from: e.from, to: e.to, promotion: 'q' })
@@ -161,7 +231,7 @@ function useChessGame() {
       setAnnouncement(e.reason)
       return
     }
-  }, [])
+  }, [deferMoveForAnimation])
 
   const socket = useChessSocket(handleServerEvent)
   const {
@@ -184,67 +254,10 @@ function useChessGame() {
   const engineReady = engine.ready
   const getBestMove = engine.getBestMove
 
-  const pendingLocalMoveRef = useRef<{ from: Square; to: Square; promotion: 'q' | 'r' | 'b' | 'n' } | null>(null)
-  const pendingLocalMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (pendingLocalMoveTimerRef.current) clearTimeout(pendingLocalMoveTimerRef.current)
-    }
-  }, [])
-
-  const applyLocalMove = useCallback((from: Square, to: Square, promotion: 'q' | 'r' | 'b' | 'n' = 'q'): boolean => {
-    const chess = chessRef.current
-    let result
-    try { result = chess.move({ from, to, promotion }) }
-    catch { result = null }
-    if (!result) return false
-
-    const moved: BoardPiece = { type: result.piece, color: result.color, square: result.to as Square }
-    const captured = result.captured
-      ? { type: result.captured, color: result.color === 'w' ? 'b' : 'w', square: result.to as Square } as BoardPiece
-      : undefined
-
-    const lm: LastMove = { from: result.from as Square, to: result.to as Square, san: result.san, piece: moved, captured }
-    setLastMove(lm)
-    if (captured) {
-      if (result.color === 'w') setCapturedByWhite((p) => [...p, captured])
-      else setCapturedByBlack((p) => [...p, captured])
-    }
-    setAnnouncement(moveDescription(lm))
-    setSelection(EMPTY_SELECTION)
-    setLegalMoves([])
-    setBoard(chessBoardToDisplay(chess))
-    setCurrentTurn(chess.turn())
-    setGameStatus(getGameStatus(chess))
-    return true
-  }, [])
-
   const localMove = useCallback((from: Square, to: Square, skipAnim = false, promotion: 'q' | 'r' | 'b' | 'n' = 'q'): boolean => {
-    const chess = chessRef.current
-    if (!skipAnim) {
-      const matchingMove = chess.moves({ square: from, verbose: true }).find((m) => m.to === to)
-      const movingPiece = chess.get(from)
-
-      if (matchingMove?.captured && movingPiece) {
-        pendingLocalMoveRef.current = { from, to, promotion }
-        if (pendingLocalMoveTimerRef.current) clearTimeout(pendingLocalMoveTimerRef.current)
-        pendingLocalMoveTimerRef.current = setTimeout(() => {
-          const pending = pendingLocalMoveRef.current
-          if (!pending) return
-          pendingLocalMoveRef.current = null
-          pendingLocalMoveTimerRef.current = null
-          applyLocalMove(pending.from, pending.to, pending.promotion)
-        }, ATTACK_ANIMATION_FALLBACK_MS)
-        playAttackAnimation(movingPiece.type, movingPiece.color, to)
-        setSelection(EMPTY_SELECTION)
-        setLegalMoves([])
-        return true
-      }
-    }
-
+    if (!skipAnim && deferMoveForAnimation(from, to, promotion)) return true
     return applyLocalMove(from, to, promotion)
-  }, [applyLocalMove, playAttackAnimation])
+  }, [applyLocalMove, deferMoveForAnimation])
 
   const aiThinkingRef = useRef(false)
   const aiRequestIdRef = useRef(0)
@@ -338,6 +351,7 @@ function useChessGame() {
   const selectSquare = useCallback((square: Square, piece: BoardPiece | null) => {
     const chess = chessRef.current
     if (gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw') return
+    if (pendingLocalMoveRef.current) return // attack animation in flight
     if (!localMode && connectionStatus === 'disconnected') return
     if (!localMode && pending) return
     // Online: you can only move on your own turn (spectators never move).
@@ -379,20 +393,8 @@ function useChessGame() {
     if (!selection.from || !selection.to || !selection.piece) return
     if (localMode) {
       const chess = chessRef.current
-      const legalMoves = chess.moves({ square: selection.from, verbose: true })
-      const matchingMove = legalMoves.find(m => m.to === selection.to)
-      const isCapture = !!matchingMove?.captured
-
-      if (isCapture) {
-        pendingLocalMoveRef.current = { from: selection.from, to: selection.to, promotion: normalizePromotion(matchingMove.promotion) }
-        if (pendingLocalMoveTimerRef.current) clearTimeout(pendingLocalMoveTimerRef.current)
-        pendingLocalMoveTimerRef.current = setTimeout(flushPendingLocalMove, ATTACK_ANIMATION_FALLBACK_MS)
-        playAttackAnimation(selection.piece.type, selection.piece.color, selection.to)
-        setSelection(EMPTY_SELECTION)
-        setLegalMoves([])
-      } else {
-        localMove(selection.from, selection.to)
-      }
+      const matchingMove = chess.moves({ square: selection.from, verbose: true }).find(m => m.to === selection.to)
+      localMove(selection.from, selection.to, false, normalizePromotion(matchingMove?.promotion))
       return
     }
     const ok = sendMove(selection.from, selection.to)
@@ -401,7 +403,7 @@ function useChessGame() {
       return
     }
     setAnnouncement(`Move sent: ${selection.from} → ${selection.to}.`)
-  }, [selection, sendMove, localMode, localMove, playAttackAnimation, flushPendingLocalMove])
+  }, [selection, sendMove, localMode, localMove])
 
   const cancelSelection = useCallback(() => {
     setSelection(EMPTY_SELECTION)
