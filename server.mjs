@@ -102,7 +102,7 @@ function joinRoom(room, ws) {
   ws.color = color
   room.lastActive = Date.now()
 
-  send(ws, { type: 'room', code: room.code, color, peerConnected: peerCount(room) === 2 })
+  send(ws, { type: 'room', code: room.code, color, peerConnected: peerCount(room) === 2, boardConnected: !!room.device })
   send(ws, stateMsg(room))
   // Tell the other player their opponent arrived.
   if (color) {
@@ -247,6 +247,7 @@ deviceWss.on('connection', (ws, req) => {
     room.lastActive = Date.now()
     console.log(`[room ${room.code}] ESP32 bound`)
     send(ws, stateMsg(room))
+    broadcast(room, { type: 'board', connected: true })
   }
 
   ws.on('message', (data) => {
@@ -258,7 +259,10 @@ deviceWss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log('[broker] ESP32 disconnected')
-    if (ws.room && ws.room.device === ws) ws.room.device = null
+    if (ws.room && ws.room.device === ws) {
+      ws.room.device = null
+      broadcast(ws.room, { type: 'board', connected: false })
+    }
   })
 
   ws.on('error', (e) => console.warn('[broker] device error:', e.message))

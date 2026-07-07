@@ -236,7 +236,7 @@ function useChessGame() {
   const socket = useChessSocket(handleServerEvent)
   const {
     status: connectionStatus, pending, illegalReason,
-    roomCode, myColor, peerConnected, createRoom, joinRoom, leaveRoom,
+    roomCode, myColor, peerConnected, boardConnected, createRoom, joinRoom, leaveRoom,
     sendMove, sendReset, clearIllegal,
   } = socket
 
@@ -448,13 +448,21 @@ function useChessGame() {
     }
   }, [leaveRoom, roomCode])
 
+  // Leave the current room and return to the lobby (local board underneath).
+  const leaveToLobby = useCallback(() => {
+    leaveRoom()
+    setLocalMode(true)
+    setLobbyOpen(true)
+  }, [leaveRoom])
+
   return {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
     gameStatus, selection, legalMoves, announcement, connectionStatus,
     pending, illegalReason,
     players, setPlayers, engineReady,
     localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
-    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, createRoom, joinRoom,
+    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, boardConnected,
+    createRoom, joinRoom, leaveToLobby,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   }
 }
@@ -598,7 +606,8 @@ export default function Home() {
     pending, illegalReason,
     players, setPlayers, engineReady,
     localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
-    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, createRoom, joinRoom,
+    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, boardConnected,
+    createRoom, joinRoom, leaveToLobby,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   } = useChessGame()
 
@@ -686,6 +695,8 @@ export default function Home() {
             roomCode={online ? roomCode : null}
             myColor={myColor}
             peerConnected={peerConnected}
+            boardConnected={boardConnected}
+            onLeaveRoom={leaveToLobby}
           />
 
           {/* Game Mode + Reset — desktop/tablet only; mobile renders this
@@ -696,6 +707,8 @@ export default function Home() {
               onLocalModeChange={changeMode}
               onResetBoard={resetBoard}
               isDisabled={connectionStatus === 'disconnected'}
+              online={online}
+              onLeaveRoom={leaveToLobby}
             />
           </div>
         </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { BoardPiece, LastMove, GameStatus, pieceLabel, moveDescription } from '@/app/lib/chess'
 import { Square } from 'chess.js'
 import ChessPiece from './ChessPiece'
@@ -33,6 +34,8 @@ interface RightPanelProps {
   roomCode?: string | null
   myColor?: 'w' | 'b' | null
   peerConnected?: boolean
+  boardConnected?: boolean
+  onLeaveRoom?: () => void
 }
 
 function PlayerCard({
@@ -105,13 +108,29 @@ function PlayerCard({
 function RoomInfoCard({
   roomCode,
   peerConnected,
+  boardConnected,
 }: {
   roomCode: string
   peerConnected: boolean
+  boardConnected: boolean
 }) {
-  const copyInvite = () => {
+  const [copied, setCopied] = useState(false)
+
+  const copyInvite = async () => {
     const url = `${window.location.origin}/game?room=${roomCode}`
-    navigator.clipboard?.writeText(url).catch(() => { /* ignore */ })
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      // Clipboard API unavailable (http / old browser) — fallback textarea.
+      const ta = document.createElement('textarea')
+      ta.value = url
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -122,12 +141,19 @@ function RoomInfoCard({
         <div className={`text-xs mt-1 ${peerConnected ? 'text-emerald-600' : 'text-amber-600'}`}>
           {peerConnected ? '● Opponent connected' : '○ Waiting for opponent…'}
         </div>
+        <div className={`text-xs mt-0.5 ${boardConnected ? 'text-emerald-600' : 'text-stone-400'}`}>
+          {boardConnected ? '● Physical board linked' : '○ No physical board'}
+        </div>
       </div>
       <button
         onClick={copyInvite}
-        className="shrink-0 text-xs px-3 py-2 rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors"
+        className={`shrink-0 text-xs px-3 py-2 rounded-md border transition-colors ${
+          copied
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+            : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800'
+        }`}
       >
-        Copy invite
+        {copied ? '✓ Copied!' : 'Copy invite'}
       </button>
     </div>
   )
@@ -260,6 +286,8 @@ export default function RightPanel({
   roomCode = null,
   myColor = null,
   peerConnected = false,
+  boardConnected = false,
+  onLeaveRoom,
 }: RightPanelProps) {
   const online = !localMode && !!roomCode
   const isDisabled = connectionStatus === 'disconnected'
@@ -294,7 +322,7 @@ export default function RightPanel({
         {online && roomCode && (
           <section>
             <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Online Room</div>
-            <RoomInfoCard roomCode={roomCode} peerConnected={peerConnected} />
+            <RoomInfoCard roomCode={roomCode} peerConnected={peerConnected} boardConnected={boardConnected} />
           </section>
         )}
 
@@ -358,6 +386,8 @@ export default function RightPanel({
             onLocalModeChange={onLocalModeChange}
             onResetBoard={onResetBoard}
             isDisabled={isDisabled}
+            online={online}
+            onLeaveRoom={onLeaveRoom}
           />
         </section>
 

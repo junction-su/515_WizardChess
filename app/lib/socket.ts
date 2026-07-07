@@ -23,6 +23,7 @@ export type ServerEvent =
   | { kind: 'illegal'; reason: string }
   | { kind: 'room'; code: string; color: 'w' | 'b' | null; peerConnected: boolean }
   | { kind: 'peer'; connected: boolean }
+  | { kind: 'board'; connected: boolean }
   | { kind: 'error'; reason: string }
 
 export interface PendingMove {
@@ -38,6 +39,7 @@ export interface ChessSocket {
   roomCode: string | null
   myColor: 'w' | 'b' | null
   peerConnected: boolean
+  boardConnected: boolean
   createRoom: () => void
   joinRoom: (code: string) => void
   leaveRoom: () => void
@@ -82,6 +84,7 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
   const [roomCode, setRoomCode] = useState<string | null>(null)
   const [myColor, setMyColor] = useState<'w' | 'b' | null>(null)
   const [peerConnected, setPeerConnected] = useState(false)
+  const [boardConnected, setBoardConnected] = useState(false)
 
   // Room we want to be in — survives reconnects so we rejoin automatically.
   const desiredRoomRef = useRef<string | null>(
@@ -174,6 +177,7 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
         setRoomCode(m.code)
         setMyColor(color)
         setPeerConnected(m.peerConnected === true)
+        setBoardConnected(m.boardConnected === true)
         desiredRoomRef.current = m.code
         try { sessionStorage.setItem(ROOM_STORAGE_KEY, m.code) } catch { /* ignore */ }
         onEventRef.current({ kind: 'room', code: m.code, color, peerConnected: m.peerConnected === true })
@@ -182,6 +186,11 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
       case 'peer': {
         setPeerConnected(m.connected === true)
         onEventRef.current({ kind: 'peer', connected: m.connected === true })
+        return
+      }
+      case 'board': {
+        setBoardConnected(m.connected === true)
+        onEventRef.current({ kind: 'board', connected: m.connected === true })
         return
       }
       case 'error': {
@@ -315,6 +324,7 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
     setRoomCode(null)
     setMyColor(null)
     setPeerConnected(false)
+    setBoardConnected(false)
     const ws = wsRef.current
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'leave' }))
@@ -323,7 +333,7 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
 
   return {
     status, pending, illegalReason,
-    roomCode, myColor, peerConnected,
+    roomCode, myColor, peerConnected, boardConnected,
     createRoom, joinRoom, leaveRoom,
     sendMove, sendReset, requestState, clearIllegal,
   }

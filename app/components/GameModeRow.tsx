@@ -5,12 +5,36 @@ export default function GameModeRow({
   onLocalModeChange,
   onResetBoard,
   isDisabled,
+  online = false,
+  onLeaveRoom,
 }: {
   localMode: boolean
   onLocalModeChange: (v: boolean) => void
   onResetBoard: () => void
   isDisabled: boolean
+  online?: boolean
+  onLeaveRoom?: () => void
 }) {
+  if (online) {
+    return (
+      <>
+        <button
+          onClick={onLeaveRoom}
+          className="text-xs px-3 py-2 rounded-md border border-red-200 bg-white text-red-500 hover:bg-red-50 transition-colors"
+        >
+          Leave Room
+        </button>
+        <button
+          onClick={onResetBoard}
+          disabled={isDisabled}
+          className="text-xs px-3 py-2 rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Reset Board
+        </button>
+      </>
+    )
+  }
+
   return (
     <>
       <div className="flex items-center gap-2">
