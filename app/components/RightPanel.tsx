@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { BoardPiece, LastMove, GameStatus, pieceLabel, moveDescription } from '@/app/lib/chess'
 import { Square } from 'chess.js'
 import ChessPiece from './ChessPiece'
@@ -33,8 +32,6 @@ interface RightPanelProps {
   onResetBoard: () => void
   roomCode?: string | null
   myColor?: 'w' | 'b' | null
-  peerConnected?: boolean
-  boardConnected?: boolean
   onLeaveRoom?: () => void
 }
 
@@ -101,71 +98,6 @@ function PlayerCard({
           </button>
         </div>
       )}
-    </div>
-  )
-}
-
-function RoomInfoCard({
-  roomCode,
-  peerConnected,
-  boardConnected,
-}: {
-  roomCode: string
-  peerConnected: boolean
-  boardConnected: boolean
-}) {
-  const [copied, setCopied] = useState(false)
-
-  const copyInvite = async () => {
-    const url = `${window.location.origin}/game?room=${roomCode}`
-    try {
-      await navigator.clipboard.writeText(url)
-    } catch {
-      // Clipboard API unavailable (http / old browser) — fallback textarea.
-      const ta = document.createElement('textarea')
-      ta.value = url
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-    }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div className="rounded-lg border border-[#c4c7ce] px-4 py-3" style={{ borderWidth: '0.5px' }}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="font-mono text-xl font-bold tracking-[0.25em] text-[#1c1917]">{roomCode}</div>
-        <button
-          onClick={copyInvite}
-          className={`shrink-0 text-xs px-3 py-2 rounded-md border transition-colors ${
-            copied
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-              : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800'
-          }`}
-        >
-          {copied ? '✓ Copied!' : 'Copy invite'}
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-1.5 mt-2.5">
-        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${
-          peerConnected
-            ? 'bg-emerald-50 text-emerald-600'
-            : 'bg-amber-50 text-amber-600'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${peerConnected ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
-          {peerConnected ? 'Opponent' : 'Waiting…'}
-        </span>
-        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${
-          boardConnected
-            ? 'bg-emerald-50 text-emerald-600'
-            : 'bg-stone-100 text-stone-400'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${boardConnected ? 'bg-emerald-500' : 'bg-stone-300'}`} />
-          Board
-        </span>
-      </div>
     </div>
   )
 }
@@ -296,8 +228,6 @@ export default function RightPanel({
   onResetBoard,
   roomCode = null,
   myColor = null,
-  peerConnected = false,
-  boardConnected = false,
   onLeaveRoom,
 }: RightPanelProps) {
   const online = !localMode && !!roomCode
@@ -330,13 +260,6 @@ export default function RightPanel({
         )}
 
         {/* Room info — online mode only */}
-        {online && roomCode && (
-          <section>
-            <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Online Room</div>
-            <RoomInfoCard roomCode={roomCode} peerConnected={peerConnected} boardConnected={boardConnected} />
-          </section>
-        )}
-
         {/* Players */}
         <section>
           <div className="text-xs uppercase tracking-widest text-stone-400 mb-2">Players</div>

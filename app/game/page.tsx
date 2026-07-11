@@ -483,39 +483,44 @@ function LobbyOverlay({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-40 p-4"
-      style={{ background: 'rgba(237, 239, 243, 0.76)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ background: 'rgba(237, 239, 243, 0.82)', backdropFilter: 'blur(5px)' }}
       role="dialog"
       aria-modal="true"
       aria-label="Choose game mode"
     >
-      <div className="bg-white border border-[#d8dde7] rounded-2xl shadow-2xl px-8 py-8 flex flex-col gap-5 w-full max-w-[360px]">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-[#1c1917] tracking-tight">Play Chess</div>
-          <div className="text-sm text-stone-500 mt-1">Choose how you want to play</div>
+      <div className="bg-white border border-[#d8dde7] rounded-3xl shadow-2xl px-6 py-7 sm:px-8 flex flex-col gap-3 w-full max-w-[380px]">
+        <div className="flex flex-col items-center mb-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/pieces/header-knight.svg" alt="" aria-hidden="true" className="h-9 w-auto mb-2" />
+          <div className="text-xl font-bold text-[#1c1917] tracking-tight">Play Chess</div>
         </div>
 
         <button
           onClick={onLocalPlay}
-          className="h-[48px] rounded-xl border border-[#c4c7ce] text-[#1c1917] font-semibold text-sm hover:bg-stone-50 transition-colors"
           autoFocus
+          className="w-full text-left rounded-2xl border border-[#c4c7ce] px-5 py-4 hover:border-[#8f96a3] hover:bg-stone-50 transition-colors"
         >
-          Local Play
+          <div className="font-semibold text-[15px] text-[#1c1917]">Local Play</div>
+          <div className="text-xs text-stone-500 mt-0.5">Two players on this device, or against the AI</div>
         </button>
-
-        <div className="flex items-center gap-3" aria-hidden="true">
-          <div className="flex-1 h-px bg-stone-200" />
-          <span className="text-xs text-stone-400 uppercase tracking-widest">Online</span>
-          <div className="flex-1 h-px bg-stone-200" />
-        </div>
 
         <button
           onClick={onCreateRoom}
           disabled={!online}
-          className="h-[48px] rounded-xl bg-[#1d4ed8] text-white font-semibold text-sm hover:bg-[#1e40af] transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full text-left rounded-2xl bg-[#1d4ed8] px-5 py-4 hover:bg-[#1e40af] transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Create Room
+          <div className="font-semibold text-[15px] text-white">Create Online Room</div>
+          <div className="text-xs text-blue-200 mt-0.5">
+            {online ? 'Get a 4-letter code and invite anyone, anywhere' : 'Connecting to server…'}
+          </div>
         </button>
+
+        <div className="flex items-center gap-3 mt-1" aria-hidden="true">
+          <div className="flex-1 h-px bg-stone-200" />
+          <span className="text-[11px] text-stone-400">or join with a code</span>
+          <div className="flex-1 h-px bg-stone-200" />
+        </div>
 
         <div className="flex gap-2">
           <input
@@ -537,12 +542,67 @@ function LobbyOverlay({
             Join
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
 
-        {!online && (
-          <div className="text-xs text-stone-400 text-center">
-            Connecting to server… online play will enable shortly.
-          </div>
-        )}
+function RoomBar({
+  roomCode,
+  peerConnected,
+  boardConnected,
+}: {
+  roomCode: string
+  peerConnected: boolean
+  boardConnected: boolean
+}) {
+  const [copied, setCopied] = useState(false)
+
+  const copyInvite = async () => {
+    const url = `${window.location.origin}/game?room=${roomCode}`
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="bg-white border-b border-stone-200 px-4 sm:px-6 py-2 flex items-center justify-between gap-x-3 gap-y-1.5 flex-wrap">
+      <div className="flex items-center gap-2.5">
+        <span className="text-[10px] uppercase tracking-widest text-stone-400">Room</span>
+        <span className="font-mono font-bold tracking-[0.2em] text-[#1c1917] text-[15px]">{roomCode}</span>
+        <button
+          onClick={copyInvite}
+          className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+            copied
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+              : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50 hover:text-stone-700'
+          }`}
+        >
+          {copied ? '✓ Copied!' : 'Copy invite'}
+        </button>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full ${
+          peerConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${peerConnected ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
+          {peerConnected ? 'Opponent connected' : 'Waiting for opponent'}
+        </span>
+        <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full ${
+          boardConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-stone-100 text-stone-400'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${boardConnected ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+          Board
+        </span>
       </div>
     </div>
   )
@@ -621,6 +681,10 @@ export default function Home() {
 
       <StatusHeader status={connectionStatus} />
 
+      {online && roomCode && (
+        <RoomBar roomCode={roomCode} peerConnected={peerConnected} boardConnected={boardConnected} />
+      )}
+
       {lobbyOpen && (
         <LobbyOverlay
           connectionStatus={connectionStatus}
@@ -694,8 +758,6 @@ export default function Home() {
             onResetBoard={resetBoard}
             roomCode={online ? roomCode : null}
             myColor={myColor}
-            peerConnected={peerConnected}
-            boardConnected={boardConnected}
             onLeaveRoom={leaveToLobby}
           />
 
