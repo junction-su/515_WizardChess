@@ -742,6 +742,7 @@ export default function Home() {
             peerConnected={peerConnected}
             boardConnected={boardConnected}
             onLeaveRoom={leaveToLobby}
+            hideMobileControls={lobbyOpen}
           />
 
           {/* Game Mode + Reset — desktop/tablet only; mobile renders this

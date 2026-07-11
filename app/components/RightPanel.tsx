@@ -35,6 +35,8 @@ interface RightPanelProps {
   peerConnected?: boolean
   boardConnected?: boolean
   onLeaveRoom?: () => void
+  /** Hide the mobile fixed move bar (e.g. while the lobby modal is open). */
+  hideMobileControls?: boolean
 }
 
 function PlayerCard({
@@ -239,6 +241,7 @@ export default function RightPanel({
   peerConnected = false,
   boardConnected = false,
   onLeaveRoom,
+  hideMobileControls = false,
 }: RightPanelProps) {
   const online = !localMode && !!roomCode
   const isDisabled = connectionStatus === 'disconnected'
@@ -340,9 +343,11 @@ export default function RightPanel({
       </div>
 
       {/* Move Control — mobile fixed bottom (hidden on md+) */}
-      <div className="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 px-4 pt-3 pb-4 z-40 md:hidden">
-        <MoveControlContent {...moveControlProps} />
-      </div>
+      {!hideMobileControls && (
+        <div className="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 px-4 pt-3 pb-4 z-40 md:hidden">
+          <MoveControlContent {...moveControlProps} />
+        </div>
+      )}
     </>
   )
 }
