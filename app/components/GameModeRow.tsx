@@ -7,6 +7,8 @@ export default function GameModeRow({
   isDisabled,
   online = false,
   onLeaveRoom,
+  roomCode = null,
+  boardConnected = false,
 }: {
   localMode: boolean
   onLocalModeChange: (v: boolean) => void
@@ -14,11 +16,25 @@ export default function GameModeRow({
   isDisabled: boolean
   online?: boolean
   onLeaveRoom?: () => void
+  roomCode?: string | null
+  boardConnected?: boolean
 }) {
   if (online) {
     return (
       <>
-        <span className="text-xs text-stone-500">Online Match</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-stone-500">Room</span>
+          <span className="text-xs font-mono font-bold tracking-[0.15em] text-[#1c1917]">{roomCode}</span>
+          <span
+            className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${
+              boardConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-stone-100 text-stone-400'
+            }`}
+            title={boardConnected ? 'Physical board linked' : 'No physical board'}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${boardConnected ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+            Board
+          </span>
+        </div>
         <button
           onClick={onLeaveRoom}
           className="text-xs px-3 py-2 rounded-md border border-red-200 bg-white text-red-500 hover:bg-red-50 transition-colors"

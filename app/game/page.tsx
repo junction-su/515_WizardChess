@@ -547,15 +547,10 @@ function LobbyOverlay({
   )
 }
 
-function RoomBar({
-  roomCode,
-  peerConnected,
-  boardConnected,
-}: {
-  roomCode: string
-  peerConnected: boolean
-  boardConnected: boolean
-}) {
+// Floating pill over the board while waiting for the opponent — the one
+// moment the room code actually needs to be front and center. Disappears
+// as soon as the opponent joins.
+function WaitingPill({ roomCode }: { roomCode: string }) {
   const [copied, setCopied] = useState(false)
 
   const copyInvite = async () => {
@@ -575,35 +570,22 @@ function RoomBar({
   }
 
   return (
-    <div className="bg-white border-b border-stone-200 px-4 sm:px-6 py-2 flex items-center justify-between gap-x-3 gap-y-1.5 flex-wrap">
-      <div className="flex items-center gap-2.5">
-        <span className="text-[10px] uppercase tracking-widest text-stone-400">Room</span>
-        <span className="font-mono font-bold tracking-[0.2em] text-[#1c1917] text-[15px]">{roomCode}</span>
-        <button
-          onClick={copyInvite}
-          className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
-            copied
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-              : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50 hover:text-stone-700'
-          }`}
-        >
-          {copied ? '✓ Copied!' : 'Copy invite'}
-        </button>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full ${
-          peerConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${peerConnected ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
-          {peerConnected ? 'Opponent connected' : 'Waiting for opponent'}
-        </span>
-        <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full ${
-          boardConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-stone-100 text-stone-400'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${boardConnected ? 'bg-emerald-500' : 'bg-stone-300'}`} />
-          Board
-        </span>
-      </div>
+    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white/95 border border-stone-200 shadow rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-3 whitespace-nowrap">
+      <span className="flex items-center gap-1.5 text-xs text-amber-600">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+        Waiting for opponent
+      </span>
+      <span className="font-mono font-bold tracking-[0.2em] text-[#1c1917] text-sm">{roomCode}</span>
+      <button
+        onClick={copyInvite}
+        className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+          copied
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+            : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50 hover:text-stone-700'
+        }`}
+      >
+        {copied ? '✓ Copied!' : 'Copy invite'}
+      </button>
     </div>
   )
 }
@@ -681,10 +663,6 @@ export default function Home() {
 
       <StatusHeader status={connectionStatus} />
 
-      {online && roomCode && (
-        <RoomBar roomCode={roomCode} peerConnected={peerConnected} boardConnected={boardConnected} />
-      )}
-
       {lobbyOpen && (
         <LobbyOverlay
           connectionStatus={connectionStatus}
@@ -715,6 +693,9 @@ export default function Home() {
                 ? `Sending ${pending.from.toUpperCase()} → ${pending.to.toUpperCase()}…`
                 : `Robot moving ${pending.from.toUpperCase()} → ${pending.to.toUpperCase()}…`}
             </div>
+          )}
+          {online && roomCode && !peerConnected && !pending && !lobbyOpen && (
+            <WaitingPill roomCode={roomCode} />
           )}
           <GameOverOverlay
             status={gameStatus}
@@ -758,6 +739,8 @@ export default function Home() {
             onResetBoard={resetBoard}
             roomCode={online ? roomCode : null}
             myColor={myColor}
+            peerConnected={peerConnected}
+            boardConnected={boardConnected}
             onLeaveRoom={leaveToLobby}
           />
 
@@ -771,6 +754,8 @@ export default function Home() {
               isDisabled={connectionStatus === 'disconnected'}
               online={online}
               onLeaveRoom={leaveToLobby}
+              roomCode={roomCode}
+              boardConnected={boardConnected}
             />
           </div>
         </div>

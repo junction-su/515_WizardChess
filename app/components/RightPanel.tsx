@@ -32,6 +32,8 @@ interface RightPanelProps {
   onResetBoard: () => void
   roomCode?: string | null
   myColor?: 'w' | 'b' | null
+  peerConnected?: boolean
+  boardConnected?: boolean
   onLeaveRoom?: () => void
 }
 
@@ -44,6 +46,7 @@ function PlayerCard({
   onPlayersChange,
   online,
   isMe,
+  peerConnected,
 }: {
   color: 'w' | 'b'
   isActive: boolean
@@ -53,6 +56,7 @@ function PlayerCard({
   onPlayersChange: (kind: 'human' | 'ai') => void
   online: boolean
   isMe: boolean
+  peerConnected: boolean
 }) {
   const label = color === 'w'
     ? (isActive && !isGameOver ? "White's turn" : 'White')
@@ -74,9 +78,13 @@ function PlayerCard({
       </span>
       {online ? (
         <span className={`text-xs font-medium mt-0.5 px-2 py-0.5 rounded-full ${
-          isMe ? 'bg-[#1d4ed8] text-white' : 'text-stone-400'
+          isMe
+            ? 'bg-[#1d4ed8] text-white'
+            : peerConnected
+              ? 'text-stone-400'
+              : 'bg-amber-50 text-amber-600'
         }`}>
-          {isMe ? 'You' : 'Opponent'}
+          {isMe ? 'You' : peerConnected ? 'Opponent' : 'Waiting…'}
         </span>
       ) : (
         <div className="flex items-center gap-1.5 mt-0.5">
@@ -228,6 +236,8 @@ export default function RightPanel({
   onResetBoard,
   roomCode = null,
   myColor = null,
+  peerConnected = false,
+  boardConnected = false,
   onLeaveRoom,
 }: RightPanelProps) {
   const online = !localMode && !!roomCode
@@ -268,13 +278,13 @@ export default function RightPanel({
               color="w" isActive={currentTurn === 'w'} isGameOver={isGameOver}
               playerKind={players.w} engineReady={engineReady}
               onPlayersChange={(kind) => onPlayersChange({ ...players, w: kind })}
-              online={online} isMe={myColor === 'w'}
+              online={online} isMe={myColor === 'w'} peerConnected={peerConnected}
             />
             <PlayerCard
               color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver}
               playerKind={players.b} engineReady={engineReady}
               onPlayersChange={(kind) => onPlayersChange({ ...players, b: kind })}
-              online={online} isMe={myColor === 'b'}
+              online={online} isMe={myColor === 'b'} peerConnected={peerConnected}
             />
           </div>
         </section>
@@ -322,6 +332,8 @@ export default function RightPanel({
             isDisabled={isDisabled}
             online={online}
             onLeaveRoom={onLeaveRoom}
+            roomCode={roomCode}
+            boardConnected={boardConnected}
           />
         </section>
 
