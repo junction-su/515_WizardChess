@@ -24,6 +24,7 @@ export type ServerEvent =
   | { kind: 'room'; code: string; color: 'w' | 'b' | null; peerConnected: boolean }
   | { kind: 'peer'; connected: boolean }
   | { kind: 'board'; connected: boolean }
+  | { kind: 'seat'; w: 'human' | 'ai'; b: 'human' | 'ai' }
   | { kind: 'error'; reason: string }
 
 export interface PendingMove {
@@ -40,9 +41,12 @@ export interface ChessSocket {
   myColor: 'w' | 'b' | null
   peerConnected: boolean
   boardConnected: boolean
+  seatKind: { w: 'human' | 'ai'; b: 'human' | 'ai' }
   createRoom: () => void
   joinRoom: (code: string) => void
   leaveRoom: () => void
+  setSeatKind: (color: 'w' | 'b', kind: 'human' | 'ai') => void
+  claimDevice: () => void
   sendMove: (from: Square, to: Square) => boolean
   sendReset: () => void
   requestState: () => void
@@ -85,6 +89,7 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
   const [myColor, setMyColor] = useState<'w' | 'b' | null>(null)
   const [peerConnected, setPeerConnected] = useState(false)
   const [boardConnected, setBoardConnected] = useState(false)
+  const [seatKind, setSeatKindState] = useState<{ w: 'human' | 'ai'; b: 'human' | 'ai' }>({ w: 'human', b: 'human' })
 
   // Room we want to be in — survives reconnects so we rejoin automatically.
   const desiredRoomRef = useRef<string | null>(
@@ -178,6 +183,10 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
         setMyColor(color)
         setPeerConnected(m.peerConnected === true)
         setBoardConnected(m.boardConnected === true)
+        const sk = m.seatKind as Record<string, unknown> | undefined
+        if (sk && (sk.w === 'human' || sk.w === 'ai') && (sk.b === 'human' || sk.b === 'ai')) {
+          setSeatKindState({ w: sk.w, b: sk.b })
+        }
         desiredRoomRef.current = m.code
         try { sessionStorage.setItem(ROOM_STORAGE_KEY, m.code) } catch { /* ignore */ }
         onEventRef.current({ kind: 'room', code: m.code, color, peerConnected: m.peerConnected === true })
@@ -191,6 +200,12 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
       case 'board': {
         setBoardConnected(m.connected === true)
         onEventRef.current({ kind: 'board', connected: m.connected === true })
+        return
+      }
+      case 'seat': {
+        if ((m.w !== 'human' && m.w !== 'ai') || (m.b !== 'human' && m.b !== 'ai')) return
+        setSeatKindState({ w: m.w, b: m.b })
+        onEventRef.current({ kind: 'seat', w: m.w, b: m.b })
         return
       }
       case 'error': {
@@ -325,16 +340,29 @@ export function useChessSocket(onEvent: (e: ServerEvent) => void): ChessSocket {
     setMyColor(null)
     setPeerConnected(false)
     setBoardConnected(false)
+    setSeatKindState({ w: 'human', b: 'human' })
     const ws = wsRef.current
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'leave' }))
     }
   }, [])
 
+  const setSeatKind = useCallback((color: 'w' | 'b', kind: 'human' | 'ai') => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify({ type: 'set-seat', color, kind }))
+  }, [])
+
+  const claimDevice = useCallback(() => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify({ type: 'claim-device' }))
+  }, [])
+
   return {
     status, pending, illegalReason,
-    roomCode, myColor, peerConnected, boardConnected,
-    createRoom, joinRoom, leaveRoom,
+    roomCode, myColor, peerConnected, boardConnected, seatKind,
+    createRoom, joinRoom, leaveRoom, setSeatKind, claimDevice,
     sendMove, sendReset, requestState, clearIllegal,
   }
 }

@@ -34,7 +34,11 @@ interface RightPanelProps {
   myColor?: 'w' | 'b' | null
   peerConnected?: boolean
   boardConnected?: boolean
+  seatKind?: { w: 'human' | 'ai'; b: 'human' | 'ai' }
   onLeaveRoom?: () => void
+  onSetSeatKind?: (color: 'w' | 'b', kind: 'human' | 'ai') => void
+  onClaimDevice?: () => void
+  claimError?: string | null
   /** Hide the mobile fixed move bar (e.g. while the lobby modal is open). */
   hideMobileControls?: boolean
 }
@@ -49,6 +53,8 @@ function PlayerCard({
   online,
   isMe,
   peerConnected,
+  seatKindForColor,
+  onSetSeatKind,
 }: {
   color: 'w' | 'b'
   isActive: boolean
@@ -59,6 +65,8 @@ function PlayerCard({
   online: boolean
   isMe: boolean
   peerConnected: boolean
+  seatKindForColor: 'human' | 'ai'
+  onSetSeatKind: (kind: 'human' | 'ai') => void
 }) {
   const label = color === 'w'
     ? (isActive && !isGameOver ? "White's turn" : 'White')
@@ -79,15 +87,33 @@ function PlayerCard({
         {label}
       </span>
       {online ? (
-        <span className={`text-xs font-medium mt-0.5 px-2 py-0.5 rounded-full ${
-          isMe
-            ? 'bg-[#1d4ed8] text-white'
-            : peerConnected
-              ? 'text-stone-400'
-              : 'bg-amber-50 text-amber-600'
-        }`}>
-          {isMe ? 'You' : peerConnected ? 'Opponent' : 'Waiting…'}
-        </span>
+        isMe ? (
+          <span className="text-xs font-medium mt-0.5 px-2 py-0.5 rounded-full bg-[#1d4ed8] text-white">You</span>
+        ) : peerConnected ? (
+          <span className="text-xs font-medium mt-0.5 px-2 py-0.5 rounded-full text-stone-400">Opponent</span>
+        ) : (
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className={`text-xs font-medium transition-colors ${
+              seatKindForColor === 'ai' ? 'text-[#1d4ed8]' : 'text-amber-600'
+            }`}>
+              {seatKindForColor === 'ai' ? 'AI' : 'Waiting…'}
+            </span>
+            <button
+              onClick={() => onSetSeatKind(seatKindForColor === 'ai' ? 'human' : 'ai')}
+              disabled={!engineReady && seatKindForColor === 'human'}
+              role="switch"
+              aria-checked={seatKindForColor === 'ai'}
+              title={seatKindForColor === 'ai' ? 'Playing against the AI' : 'Waiting for a human opponent'}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4091ff] disabled:opacity-40 ${
+                seatKindForColor === 'ai' ? 'bg-[#1d4ed8]' : 'bg-stone-300'
+              }`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                seatKindForColor === 'ai' ? 'translate-x-[18px]' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+        )
       ) : (
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className={`text-xs font-medium transition-colors ${
@@ -240,7 +266,11 @@ export default function RightPanel({
   myColor = null,
   peerConnected = false,
   boardConnected = false,
+  seatKind = { w: 'human', b: 'human' },
   onLeaveRoom,
+  onSetSeatKind,
+  onClaimDevice,
+  claimError = null,
   hideMobileControls = false,
 }: RightPanelProps) {
   const online = !localMode && !!roomCode
@@ -282,12 +312,14 @@ export default function RightPanel({
               playerKind={players.w} engineReady={engineReady}
               onPlayersChange={(kind) => onPlayersChange({ ...players, w: kind })}
               online={online} isMe={myColor === 'w'} peerConnected={peerConnected}
+              seatKindForColor={seatKind.w} onSetSeatKind={(kind) => onSetSeatKind?.('w', kind)}
             />
             <PlayerCard
               color="b" isActive={currentTurn === 'b'} isGameOver={isGameOver}
               playerKind={players.b} engineReady={engineReady}
               onPlayersChange={(kind) => onPlayersChange({ ...players, b: kind })}
               online={online} isMe={myColor === 'b'} peerConnected={peerConnected}
+              seatKindForColor={seatKind.b} onSetSeatKind={(kind) => onSetSeatKind?.('b', kind)}
             />
           </div>
         </section>
@@ -337,6 +369,8 @@ export default function RightPanel({
             onLeaveRoom={onLeaveRoom}
             roomCode={roomCode}
             boardConnected={boardConnected}
+            onClaimDevice={onClaimDevice}
+            claimError={claimError}
           />
         </section>
 

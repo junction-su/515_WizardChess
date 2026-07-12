@@ -9,6 +9,8 @@ export default function GameModeRow({
   onLeaveRoom,
   roomCode = null,
   boardConnected = false,
+  onClaimDevice,
+  claimError = null,
 }: {
   localMode: boolean
   onLocalModeChange: (v: boolean) => void
@@ -18,22 +20,37 @@ export default function GameModeRow({
   onLeaveRoom?: () => void
   roomCode?: string | null
   boardConnected?: boolean
+  onClaimDevice?: () => void
+  claimError?: string | null
 }) {
   if (online) {
     return (
       <>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
           <span className="text-xs text-stone-500">Room</span>
           <span className="text-xs font-mono font-bold tracking-[0.15em] text-[#1c1917]">{roomCode}</span>
-          <span
-            className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${
-              boardConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-stone-100 text-stone-400'
-            }`}
-            title={boardConnected ? 'Physical board linked' : 'No physical board'}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${boardConnected ? 'bg-emerald-500' : 'bg-stone-300'}`} />
-            Board
-          </span>
+          {boardConnected ? (
+            <span
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600"
+              title="Physical board linked"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Board
+            </span>
+          ) : (
+            <button
+              onClick={onClaimDevice}
+              className="text-[11px] px-2 py-0.5 rounded-full border border-stone-200 text-stone-500 hover:bg-stone-50 hover:text-stone-700 transition-colors"
+              title="Link a physical board that's powered on and waiting to be claimed"
+            >
+              Link board
+            </button>
+          )}
+          {claimError && (
+            <span className="absolute top-full left-0 mt-1 text-[11px] text-red-500 whitespace-nowrap">
+              {claimError}
+            </span>
+          )}
         </div>
         <button
           onClick={onLeaveRoom}

@@ -59,7 +59,10 @@ function useChessGame() {
   const [players, setPlayers] = useState<PlayerConfig>({ w: 'human', b: 'human' })
   const [localMode, setLocalMode] = useState(true)
   const [lobbyOpen, setLobbyOpen] = useState(true)
+  const lobbyOpenRef = useRef(lobbyOpen)
+  useEffect(() => { lobbyOpenRef.current = lobbyOpen }, [lobbyOpen])
   const [lobbyError, setLobbyError] = useState<string | null>(null)
+  const [claimError, setClaimError] = useState<string | null>(null)
   const [attackAnim, setAttackAnim] = useState<AttackAnimState | null>(null)
   const nextAttackAnimIdRef = useRef(0)
 
@@ -230,7 +233,14 @@ function useChessGame() {
     }
 
     if (e.kind === 'error') {
-      setLobbyError(e.reason)
+      // Join-room failures surface in the lobby; anything else (e.g. a
+      // failed board claim) gets a brief inline note near where it happened.
+      if (lobbyOpenRef.current) {
+        setLobbyError(e.reason)
+      } else {
+        setClaimError(e.reason)
+        setTimeout(() => setClaimError(null), 4000)
+      }
       setAnnouncement(e.reason)
       return
     }
@@ -239,7 +249,8 @@ function useChessGame() {
   const socket = useChessSocket(handleServerEvent)
   const {
     status: connectionStatus, pending, illegalReason,
-    roomCode, myColor, peerConnected, boardConnected, createRoom, joinRoom, leaveRoom,
+    roomCode, myColor, peerConnected, boardConnected, seatKind,
+    createRoom, joinRoom, leaveRoom, setSeatKind, claimDevice,
     sendMove, sendReset, clearIllegal,
   } = socket
 
@@ -252,6 +263,12 @@ function useChessGame() {
     urlJoinDoneRef.current = true
     if (code && !roomCode) joinRoom(code)
   }, [connectionStatus, roomCode, joinRoom])
+
+  // Room seats are server-authoritative — mirror them into `players` so the
+  // shared AI-turn effect below works the same in local and online play.
+  useEffect(() => {
+    if (!localMode && roomCode) setPlayers(seatKind)
+  }, [localMode, roomCode, seatKind])
 
   const engine = useStockfish()
   const engineReady = engine.ready
@@ -266,8 +283,10 @@ function useChessGame() {
   const aiRequestIdRef = useRef(0)
   useEffect(() => {
     if (aiThinkingRef.current) return
-    // Online rooms are human-vs-human; the seat's color is fixed server-side.
-    if (!localMode && roomCode) return
+    // In a room, only the seated player may proxy the AI's move — a
+    // spectator's client shouldn't waste cycles racing to submit it too
+    // (the server would reject it anyway, since spectators can't move).
+    if (!localMode && roomCode && !myColor) return
     if (players[currentTurn] !== 'ai') return
     if (attackAnim || pendingLocalMoveRef.current) return
     if (gameStatus !== 'playing' && gameStatus !== 'check') return
@@ -349,7 +368,7 @@ function useChessGame() {
         aiThinkingRef.current = false
       }
     }
-  }, [players, currentTurn, gameStatus, connectionStatus, pending, attackAnim, getBestMove, sendMove, localMode, localMove, roomCode])
+  }, [players, currentTurn, gameStatus, connectionStatus, pending, attackAnim, getBestMove, sendMove, localMode, localMove, roomCode, myColor])
 
   const selectSquare = useCallback((square: Square, piece: BoardPiece | null) => {
     const chess = chessRef.current
@@ -472,9 +491,9 @@ function useChessGame() {
     pending, illegalReason,
     players, setPlayers, engineReady,
     localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
-    lobbyOpen, setLobbyOpen, lobbyError, setLobbyError,
-    roomCode, myColor, peerConnected, boardConnected,
-    createRoom, joinRoom, leaveToLobby,
+    lobbyOpen, setLobbyOpen, lobbyError, setLobbyError, claimError,
+    roomCode, myColor, peerConnected, boardConnected, seatKind,
+    createRoom, joinRoom, leaveToLobby, setSeatKind, claimDevice,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   }
 }
@@ -568,8 +587,19 @@ function LobbyOverlay({
 }
 
 // Light dimmed overlay while waiting for the opponent — the game can't
-// start without them anyway. Disappears the moment they join.
-function WaitingOverlay({ roomCode, onLeave }: { roomCode: string; onLeave: () => void }) {
+// start without them anyway. Disappears once they join, or once the
+// opposing seat is handed to the AI instead.
+function WaitingOverlay({
+  roomCode,
+  engineReady,
+  onLeave,
+  onPlayAi,
+}: {
+  roomCode: string
+  engineReady: boolean
+  onLeave: () => void
+  onPlayAi: () => void
+}) {
   const [copied, setCopied] = useState(false)
 
   const copyInvite = async () => {
@@ -612,6 +642,21 @@ function WaitingOverlay({ roomCode, onLeave }: { roomCode: string; onLeave: () =
         >
           {copied ? '✓ Copied!' : 'Copy invite link'}
         </button>
+
+        <div className="flex items-center gap-3 w-full" aria-hidden="true">
+          <div className="flex-1 h-px bg-stone-200" />
+          <span className="text-[11px] text-stone-400">or</span>
+          <div className="flex-1 h-px bg-stone-200" />
+        </div>
+
+        <button
+          onClick={onPlayAi}
+          disabled={!engineReady}
+          className="w-full h-[44px] rounded-xl border border-[#c4c7ce] text-[#1c1917] font-semibold text-sm hover:bg-stone-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {engineReady ? 'Play vs AI instead' : 'Loading AI…'}
+        </button>
+
         <button
           onClick={onLeave}
           className="text-xs text-stone-400 hover:text-red-500 transition-colors"
@@ -681,13 +726,15 @@ export default function Home() {
     pending, illegalReason,
     players, setPlayers, engineReady,
     localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
-    lobbyOpen, setLobbyOpen, lobbyError, setLobbyError,
-    roomCode, myColor, peerConnected, boardConnected,
-    createRoom, joinRoom, leaveToLobby,
+    lobbyOpen, setLobbyOpen, lobbyError, setLobbyError, claimError,
+    roomCode, myColor, peerConnected, boardConnected, seatKind,
+    createRoom, joinRoom, leaveToLobby, setSeatKind, claimDevice,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   } = useChessGame()
 
   const online = !localMode && !!roomCode
+  const opponentColor = myColor === 'w' ? 'b' : myColor === 'b' ? 'w' : null
+  const opponentIsAi = opponentColor ? seatKind[opponentColor] === 'ai' : false
 
   return (
     <div className="flex flex-col min-h-screen md:h-screen bg-[#edeff3]">
@@ -697,9 +744,15 @@ export default function Home() {
 
       <StatusHeader status={connectionStatus} />
 
-      {/* Waiting overlay — the game can't start until the opponent joins */}
-      {online && roomCode && !peerConnected && !lobbyOpen && (
-        <WaitingOverlay roomCode={roomCode} onLeave={leaveToLobby} />
+      {/* Waiting overlay — the game can't start until the opponent joins,
+          or the empty seat is handed to the AI instead */}
+      {online && roomCode && !peerConnected && !opponentIsAi && !lobbyOpen && (
+        <WaitingOverlay
+          roomCode={roomCode}
+          engineReady={engineReady}
+          onLeave={leaveToLobby}
+          onPlayAi={() => opponentColor && setSeatKind(opponentColor, 'ai')}
+        />
       )}
 
       {lobbyOpen && (
@@ -781,8 +834,12 @@ export default function Home() {
             myColor={myColor}
             peerConnected={peerConnected}
             boardConnected={boardConnected}
+            seatKind={seatKind}
             onLeaveRoom={leaveToLobby}
-            hideMobileControls={lobbyOpen || (online && !peerConnected)}
+            onSetSeatKind={setSeatKind}
+            onClaimDevice={claimDevice}
+            claimError={claimError}
+            hideMobileControls={lobbyOpen || (online && !peerConnected && !opponentIsAi)}
           />
 
           {/* Game Mode + Reset — desktop/tablet only; mobile renders this
@@ -797,6 +854,8 @@ export default function Home() {
               onLeaveRoom={leaveToLobby}
               roomCode={roomCode}
               boardConnected={boardConnected}
+              onClaimDevice={claimDevice}
+              claimError={claimError}
             />
           </div>
         </div>

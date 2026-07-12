@@ -38,6 +38,10 @@ const ROOM_TTL_MS = 30 * 60 * 1000
 const BOARD_MOVE_TIMEOUT_MS = 9000
 const rooms = new Map() // code → room
 
+// Devices connected without a room (deployment is public — many rooms can
+// exist at once, so a board must be explicitly linked to one, never guessed).
+const unclaimedDevices = new Set() // ws
+
 function makeRoom() {
   // No I/O in the alphabet — codes are read aloud between players.
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -49,6 +53,7 @@ function makeRoom() {
     code,
     chess: new Chess(),
     players: { w: null, b: null },   // ws | null
+    seatKind: { w: 'human', b: 'human' }, // 'human' | 'ai' — client runs the engine, server just authorizes
     spectators: new Set(),
     device: null,
     pendingMove: null, // { from, to, timer } — set while waiting on the board
@@ -92,9 +97,10 @@ function peerCount(room) {
 }
 
 function seatPlayer(room, ws) {
-  // Returns assigned color, or null → spectator.
-  if (!room.players.w) { room.players.w = ws; return 'w' }
-  if (!room.players.b) { room.players.b = ws; return 'b' }
+  // Returns assigned color, or null → spectator. A seat marked 'ai' is
+  // never handed to a human joiner — they become a spectator instead.
+  if (!room.players.w && room.seatKind.w !== 'ai') { room.players.w = ws; return 'w' }
+  if (!room.players.b && room.seatKind.b !== 'ai') { room.players.b = ws; return 'b' }
   room.spectators.add(ws)
   return null
 }
@@ -106,7 +112,11 @@ function joinRoom(room, ws) {
   ws.color = color
   room.lastActive = Date.now()
 
-  send(ws, { type: 'room', code: room.code, color, peerConnected: peerCount(room) === 2, boardConnected: !!room.device })
+  send(ws, {
+    type: 'room', code: room.code, color,
+    peerConnected: peerCount(room) === 2, boardConnected: !!room.device,
+    seatKind: room.seatKind,
+  })
   send(ws, stateMsg(room))
   // Tell the other player their opponent arrived.
   if (color) {
@@ -127,6 +137,43 @@ function leaveCurrentRoom(ws) {
   room.lastActive = Date.now()
   broadcast(room, { type: 'peer', connected: peerCount(room) === 2 })
   console.log(`[room ${room.code}] player left (${peerCount(room)}/2)`)
+
+  // Nobody left watching — free the board so another room can claim it
+  // instead of it sitting locked to an abandoned game.
+  if (peerCount(room) === 0 && room.spectators.size === 0 && room.device) {
+    releaseDevice(room)
+  }
+}
+
+// Bind a device (already connected, currently unclaimed) to a room.
+function bindDeviceToRoom(deviceWs, room) {
+  unclaimedDevices.delete(deviceWs)
+  if (room.device && room.device !== deviceWs) {
+    try { room.device.close() } catch { /* ignore */ }
+  }
+  room.device = deviceWs
+  deviceWs.room = room
+  room.lastActive = Date.now()
+  console.log(`[room ${room.code}] board linked`)
+  send(deviceWs, stateMsg(room))
+  broadcast(room, { type: 'board', connected: true })
+  // A board reconnecting mid-move (dropped and came back) needs the
+  // in-flight command resent — it never got a chance to run it.
+  if (room.pendingMove) {
+    send(deviceWs, { type: 'move', from: room.pendingMove.from.toUpperCase(), to: room.pendingMove.to.toUpperCase() })
+  }
+}
+
+// Unbind a room's device and return it to the unclaimed pool so another
+// room can pick it up, without dropping the physical connection.
+function releaseDevice(room) {
+  const deviceWs = room.device
+  if (!deviceWs) return
+  room.device = null
+  deviceWs.room = null
+  if (deviceWs.readyState === 1 /* OPEN */) unclaimedDevices.add(deviceWs)
+  broadcast(room, { type: 'board', connected: false })
+  console.log(`[room ${room.code}] board released back to the pool`)
 }
 
 // Resolve the in-flight move: tell browsers it's done and clear the wait.
@@ -140,7 +187,14 @@ function resolvePendingMove(room) {
 
 function handleMove(room, ws, from, to) {
   const chess = room.chess
-  if (ws.color !== chess.turn()) {
+  const turnColor = chess.turn()
+  // Normally only the seated occupant of the color to move may send it.
+  // Exception: an 'ai' seat has no occupant — any seated human in the room
+  // (whose own client is running the engine) may submit that move on the
+  // AI's behalf.
+  const isSeatOwner = ws.color === turnColor
+  const isAiProxy = room.seatKind[turnColor] === 'ai' && !!ws.color
+  if (!isSeatOwner && !isAiProxy) {
     send(ws, { type: 'illegal', reason: ws.color ? 'Not your turn' : 'Spectators cannot move' })
     return
   }
@@ -248,6 +302,27 @@ browserWss.on('connection', (ws) => {
       case 'hello':
         if (ws.room) send(ws, stateMsg(ws.room))
         return
+      case 'set-seat': {
+        if (!ws.room || !ws.color) return // must be a seated player, not a spectator
+        const color = msg.color === 'w' || msg.color === 'b' ? msg.color : null
+        const kind = msg.kind === 'ai' || msg.kind === 'human' ? msg.kind : null
+        if (!color || !kind) return
+        // Only an empty seat can change kind — never bump out a live player.
+        if (ws.room.players[color]) return
+        ws.room.seatKind[color] = kind
+        ws.room.lastActive = Date.now()
+        broadcast(ws.room, { type: 'seat', w: ws.room.seatKind.w, b: ws.room.seatKind.b })
+        console.log(`[room ${ws.room.code}] seat ${color} set to ${kind}`)
+        return
+      }
+      case 'claim-device': {
+        if (!ws.room) { send(ws, { type: 'error', reason: 'Join a room first' }); return }
+        if (ws.room.device) { send(ws, { type: 'error', reason: 'This room already has a board linked' }); return }
+        const deviceWs = unclaimedDevices.values().next().value
+        if (!deviceWs) { send(ws, { type: 'error', reason: 'No physical board is available to link right now' }); return }
+        bindDeviceToRoom(deviceWs, ws.room)
+        return
+      }
     }
   })
 
@@ -256,42 +331,27 @@ browserWss.on('connection', (ws) => {
 })
 
 // ── Device websocket (/device) ────────────────────────────────────────────────
-// ?room=CODE binds the board to that room. Without the query (current
-// firmware) it binds to the most recently active room, so demos work with
-// zero firmware changes.
+// ?room=CODE binds the board directly to a known room (useful for testing, or
+// firmware that remembers its last room). Without a code the board connects
+// "unclaimed" — the deployment is public, so multiple rooms can exist at
+// once and we never guess which one a bare connection belongs to. A player
+// inside a room links it explicitly via the "claim-device" message.
 
 const deviceWss = new WebSocketServer({ noServer: true, perMessageDeflate: false })
-
-function latestRoom() {
-  let best = null
-  for (const room of rooms.values()) {
-    if (!best || room.lastActive > best.lastActive) best = room
-  }
-  return best
-}
 
 deviceWss.on('connection', (ws, req) => {
   const { query } = parse(req.url, true)
   const code = typeof query.room === 'string' ? query.room.toUpperCase().trim() : ''
-  const room = code ? rooms.get(code) : latestRoom()
+  const room = code ? rooms.get(code) : null
 
-  if (!room) {
-    console.warn(`[broker] ESP32 connected but no room available${code ? ` (asked for ${code})` : ''}`)
+  if (code && !room) {
+    console.warn(`[broker] ESP32 asked for room ${code}, which doesn't exist — left unclaimed`)
+  }
+  if (room) {
+    bindDeviceToRoom(ws, room)
   } else {
-    if (room.device && room.device !== ws) {
-      try { room.device.close() } catch { /* ignore */ }
-    }
-    room.device = ws
-    ws.room = room
-    room.lastActive = Date.now()
-    console.log(`[room ${room.code}] ESP32 bound`)
-    send(ws, stateMsg(room))
-    broadcast(room, { type: 'board', connected: true })
-    // A board reconnecting mid-move (dropped and came back) needs the
-    // in-flight command resent — it never got a chance to run it.
-    if (room.pendingMove) {
-      send(ws, { type: 'move', from: room.pendingMove.from.toUpperCase(), to: room.pendingMove.to.toUpperCase() })
-    }
+    unclaimedDevices.add(ws)
+    console.log('[broker] ESP32 connected, unclaimed — waiting to be linked from a room')
   }
 
   ws.on('message', (data) => {
@@ -319,6 +379,7 @@ deviceWss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log('[broker] ESP32 disconnected')
+    unclaimedDevices.delete(ws)
     if (ws.room && ws.room.device === ws) {
       ws.room.device = null
       broadcast(ws.room, { type: 'board', connected: false })
