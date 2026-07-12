@@ -737,6 +737,15 @@ export default function Home() {
   const opponentColor = myColor === 'w' ? 'b' : myColor === 'b' ? 'w' : null
   const opponentIsAi = opponentColor ? seatKind[opponentColor] === 'ai' : false
 
+  // The game is "live" once the lobby and any waiting/AI-setup overlay are
+  // gone. On mobile, typing a room code opens the keyboard which can leave
+  // the page scrolled past the board — snap back to the top so the board is
+  // the first thing the player sees when play begins.
+  const gameLive = !lobbyOpen && !(online && roomCode && !peerConnected && !opponentIsAi)
+  useEffect(() => {
+    if (gameLive) window.scrollTo({ top: 0 })
+  }, [gameLive])
+
   return (
     <div className="flex flex-col min-h-screen md:h-screen bg-[#edeff3]">
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
