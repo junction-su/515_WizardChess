@@ -411,49 +411,57 @@ function useChessGame() {
     if (illegalReason) clearIllegal()
   }, [illegalReason, clearIllegal])
 
+  const resetLocalState = useCallback((announce?: string) => {
+    chessRef.current = new Chess()
+    setBoard(chessBoardToDisplay(chessRef.current))
+    setCurrentTurn('w')
+    setLastMove(null)
+    setCapturedByWhite([])
+    setCapturedByBlack([])
+    setGameStatus('playing')
+    setSelection(EMPTY_SELECTION)
+    setLegalMoves([])
+    setAttackAnim(null)
+    pendingLocalMoveRef.current = null
+    if (pendingLocalMoveTimerRef.current) {
+      clearTimeout(pendingLocalMoveTimerRef.current)
+      pendingLocalMoveTimerRef.current = null
+    }
+    if (announce) setAnnouncement(announce)
+  }, [])
+
   const resetBoard = useCallback(() => {
     if (localMode) {
-      chessRef.current = new Chess()
-      setBoard(chessBoardToDisplay(chessRef.current))
-      setCurrentTurn('w')
-      setLastMove(null)
-      setCapturedByWhite([])
-      setCapturedByBlack([])
-      setGameStatus('playing')
-      setSelection(EMPTY_SELECTION)
-      setLegalMoves([])
-      setAttackAnim(null)
-      pendingLocalMoveRef.current = null
-      if (pendingLocalMoveTimerRef.current) {
-        clearTimeout(pendingLocalMoveTimerRef.current)
-        pendingLocalMoveTimerRef.current = null
-      }
-      setAnnouncement('Board reset.')
+      resetLocalState('Board reset.')
       return
     }
     setAnnouncement('Reset requested.')
     sendReset()
-  }, [sendReset, localMode])
+  }, [sendReset, localMode, resetLocalState])
 
-  // Game Mode toggle: local ⇆ online. Going local leaves the room; going
+  // Game Mode toggle: local ⇆ online. Going local leaves the room (the
+  // room's game stays on the server; the local board starts fresh); going
   // online without a room opens the lobby to create/join one.
   const changeMode = useCallback((local: boolean) => {
     if (local) {
+      const wasOnline = !!roomCode
       leaveRoom()
       setLocalMode(true)
       setLobbyOpen(false)
+      if (wasOnline) resetLocalState('Left the room. Board reset.')
     } else {
       setLocalMode(false)
       if (!roomCode) setLobbyOpen(true)
     }
-  }, [leaveRoom, roomCode])
+  }, [leaveRoom, roomCode, resetLocalState])
 
   // Leave the current room and return to the lobby (local board underneath).
   const leaveToLobby = useCallback(() => {
     leaveRoom()
     setLocalMode(true)
     setLobbyOpen(true)
-  }, [leaveRoom])
+    resetLocalState('Left the room. Board reset.')
+  }, [leaveRoom, resetLocalState])
 
   return {
     board, currentTurn, lastMove, capturedByWhite, capturedByBlack,
@@ -570,7 +578,7 @@ function WaitingPill({ roomCode }: { roomCode: string }) {
   }
 
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white/95 border border-stone-200 shadow rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-3 whitespace-nowrap">
+    <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-white/95 border border-stone-200 shadow rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-3 whitespace-nowrap">
       <span className="flex items-center gap-1.5 text-xs text-amber-600">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
         Waiting for opponent
@@ -663,6 +671,13 @@ export default function Home() {
 
       <StatusHeader status={connectionStatus} />
 
+      {/* Waiting pill floats just under the header, above the board area */}
+      {online && roomCode && !peerConnected && !lobbyOpen && (
+        <div className="relative z-30 h-0">
+          <WaitingPill roomCode={roomCode} />
+        </div>
+      )}
+
       {lobbyOpen && (
         <LobbyOverlay
           connectionStatus={connectionStatus}
@@ -693,9 +708,6 @@ export default function Home() {
                 ? `Sending ${pending.from.toUpperCase()} → ${pending.to.toUpperCase()}…`
                 : `Robot moving ${pending.from.toUpperCase()} → ${pending.to.toUpperCase()}…`}
             </div>
-          )}
-          {online && roomCode && !peerConnected && !pending && !lobbyOpen && (
-            <WaitingPill roomCode={roomCode} />
           )}
           <GameOverOverlay
             status={gameStatus}
