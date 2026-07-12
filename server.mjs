@@ -33,6 +33,9 @@ if (!brokerOnly) {
 // device: confirmed moves are forwarded to it; its own messages are logged.
 
 const ROOM_TTL_MS = 30 * 60 * 1000
+// How long the server waits for the physical board's own 'done' before
+// advancing the turn anyway (board offline, jammed, or firmware silent).
+const BOARD_MOVE_TIMEOUT_MS = 9000
 const rooms = new Map() // code → room
 
 function makeRoom() {
@@ -48,6 +51,7 @@ function makeRoom() {
     players: { w: null, b: null },   // ws | null
     spectators: new Set(),
     device: null,
+    pendingMove: null, // { from, to, timer } — set while waiting on the board
     lastActive: Date.now(),
   }
   rooms.set(code, room)
@@ -125,6 +129,15 @@ function leaveCurrentRoom(ws) {
   console.log(`[room ${room.code}] player left (${peerCount(room)}/2)`)
 }
 
+// Resolve the in-flight move: tell browsers it's done and clear the wait.
+function resolvePendingMove(room) {
+  const pending = room.pendingMove
+  if (!pending) return
+  clearTimeout(pending.timer)
+  room.pendingMove = null
+  broadcast(room, { type: 'done', from: pending.from, to: pending.to })
+}
+
 function handleMove(room, ws, from, to) {
   const chess = room.chess
   if (ws.color !== chess.turn()) {
@@ -143,13 +156,38 @@ function handleMove(room, ws, from, to) {
     return
   }
   room.lastActive = Date.now()
-  broadcast(room, { type: 'done', from: result.from, to: result.to })
-  // Physical board replays the confirmed move.
-  send(room.device, { type: 'move', from: result.from.toUpperCase(), to: result.to.toUpperCase() })
   console.log(`[room ${room.code}] ${ws.color} played ${result.from}→${result.to}`)
+
+  // Chess-legality is already settled — ack the move so the UI shows
+  // "Robot moving…" instead of leaving the sender hanging.
+  broadcast(room, { type: 'ack', from: result.from.toUpperCase(), to: result.to.toUpperCase() })
+
+  if (room.device?.readyState === 1 /* OPEN */) {
+    // Wait for the board to physically finish before advancing the turn —
+    // if it never confirms (offline, jammed), time out and proceed anyway.
+    if (room.pendingMove) clearTimeout(room.pendingMove.timer)
+    const from_ = result.from
+    const to_ = result.to
+    room.pendingMove = {
+      from: from_,
+      to: to_,
+      timer: setTimeout(() => {
+        console.warn(`[room ${room.code}] board did not confirm ${from_}→${to_} in time — advancing anyway`)
+        resolvePendingMove(room)
+      }, BOARD_MOVE_TIMEOUT_MS),
+    }
+    send(room.device, { type: 'move', from: from_.toUpperCase(), to: to_.toUpperCase() })
+  } else {
+    // No physical board bound — server validation is the only confirmation needed.
+    broadcast(room, { type: 'done', from: result.from, to: result.to })
+  }
 }
 
 function handleReset(room) {
+  if (room.pendingMove) {
+    clearTimeout(room.pendingMove.timer)
+    room.pendingMove = null
+  }
   room.chess = new Chess()
   room.lastActive = Date.now()
   broadcast(room, stateMsg(room))
@@ -163,6 +201,7 @@ setInterval(() => {
   for (const [code, room] of rooms) {
     const empty = peerCount(room) === 0 && room.spectators.size === 0 && !room.device
     if (empty && now - room.lastActive > ROOM_TTL_MS) {
+      if (room.pendingMove) clearTimeout(room.pendingMove.timer)
       rooms.delete(code)
       console.log(`[room ${code}] expired`)
     }
@@ -248,13 +287,34 @@ deviceWss.on('connection', (ws, req) => {
     console.log(`[room ${room.code}] ESP32 bound`)
     send(ws, stateMsg(room))
     broadcast(room, { type: 'board', connected: true })
+    // A board reconnecting mid-move (dropped and came back) needs the
+    // in-flight command resent — it never got a chance to run it.
+    if (room.pendingMove) {
+      send(ws, { type: 'move', from: room.pendingMove.from.toUpperCase(), to: room.pendingMove.to.toUpperCase() })
+    }
   }
 
   ws.on('message', (data) => {
-    const msg = data.toString()
-    console.log('[broker] device →', msg)
-    // The server owns game state; device output reaches browsers as logs only.
-    if (ws.room) broadcast(ws.room, asLog(msg))
+    const raw = data.toString()
+    console.log('[broker] device →', raw)
+    if (!ws.room) return
+
+    // A 'done' matching the in-flight move means the board physically
+    // finished — resolve it now instead of waiting for the timeout.
+    let parsed = null
+    try { parsed = JSON.parse(raw) } catch { /* not JSON */ }
+    const pending = ws.room.pendingMove
+    if (parsed?.type === 'done' && pending
+        && typeof parsed.from === 'string' && typeof parsed.to === 'string'
+        && parsed.from.toLowerCase() === pending.from.toLowerCase()
+        && parsed.to.toLowerCase() === pending.to.toLowerCase()) {
+      resolvePendingMove(ws.room)
+      return
+    }
+
+    // Anything else from the device (ack, state, unmatched done, chatter) is
+    // surfaced to browsers as a log line only — the server stays authoritative.
+    broadcast(ws.room, asLog(raw))
   })
 
   ws.on('close', () => {
@@ -262,6 +322,9 @@ deviceWss.on('connection', (ws, req) => {
     if (ws.room && ws.room.device === ws) {
       ws.room.device = null
       broadcast(ws.room, { type: 'board', connected: false })
+      // No board left to confirm the in-flight move — resolve it now
+      // rather than making players wait out the full timeout.
+      if (ws.room.pendingMove) resolvePendingMove(ws.room)
     }
   })
 
