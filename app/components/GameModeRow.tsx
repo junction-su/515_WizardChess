@@ -40,10 +40,10 @@ export default function GameModeRow({
           ) : (
             <button
               onClick={onClaimDevice}
-              className="text-[11px] px-2 py-0.5 rounded-full border border-stone-200 text-stone-500 hover:bg-stone-50 hover:text-stone-700 transition-colors"
+              className="text-[11px] font-medium px-2.5 py-1 rounded-full border border-[#1d4ed8] text-[#1d4ed8] hover:bg-[#f5f9ff] transition-colors"
               title="Link a physical board that's powered on and waiting to be claimed"
             >
-              Link board
+              Link physical board
             </button>
           )}
           {claimError && (

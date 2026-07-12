@@ -293,7 +293,7 @@ export default function RightPanel({
   return (
     <>
       {/* Scrollable content */}
-      <div className="flex flex-col gap-10 p-4 pt-6 sm:p-6 sm:pt-6 md:pt-8 md:h-full md:overflow-y-auto pb-36 md:pb-6">
+      <div className="flex flex-col gap-10 p-4 pt-6 sm:p-6 sm:pt-6 md:pt-8 md:h-full md:overflow-y-auto pb-44 md:pb-6">
 
         {/* Status badge */}
         {badge && (

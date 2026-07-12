@@ -526,7 +526,8 @@ function LobbyOverlay({
         <div className="flex flex-col items-center mb-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/pieces/header-knight.svg" alt="" aria-hidden="true" className="h-9 w-auto mb-2" />
-          <div className="text-xl font-bold text-[#1c1917] tracking-tight">Play Chess</div>
+          <div className="text-xl font-bold text-[#1c1917] tracking-tight">Wizard Chess</div>
+          <div className="text-xs text-stone-400 mt-0.5">Choose how to play</div>
         </div>
 
         <button
@@ -742,7 +743,7 @@ export default function Home() {
         {announcement}
       </div>
 
-      <StatusHeader status={connectionStatus} />
+      <StatusHeader status={connectionStatus} showStatus={online} />
 
       {/* Waiting overlay — the game can't start until the opponent joins,
           or the empty seat is handed to the AI instead */}

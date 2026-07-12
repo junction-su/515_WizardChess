@@ -148,14 +148,14 @@ export default function IntroPage() {
               }
             `}
           >
-            {status === 'idle' && 'Connect'}
+            {status === 'idle' && 'Enter'}
             {status === 'connecting' && (
               <>
                 <Spinner />
-                Connecting...
+                Loading...
               </>
             )}
-            {status === 'done' && '✓  Done!'}
+            {status === 'done' && '✓  Ready!'}
           </button>
 
           <p
@@ -163,8 +163,8 @@ export default function IntroPage() {
               status === 'idle' ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            {status === 'connecting' && 'Establishing connection with the board…'}
-            {status === 'done' && 'Board connected. Launching game…'}
+            {status === 'connecting' && 'Setting up your game…'}
+            {status === 'done' && 'Launching game…'}
             {status === 'idle' && ' '}
           </p>
         </div>
