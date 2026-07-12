@@ -26,24 +26,23 @@ export default function GameModeRow({
   if (online) {
     return (
       <>
-        <div className="flex items-center gap-2 relative">
-          <span className="text-xs text-stone-500">Room</span>
-          <span className="text-xs font-mono font-bold tracking-[0.15em] text-[#1c1917]">{roomCode}</span>
+        <div className="flex flex-col gap-1 relative">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-stone-500">Room</span>
+            <span className="text-xs font-mono font-bold tracking-[0.15em] text-[#1c1917]">{roomCode}</span>
+          </div>
           {boardConnected ? (
-            <span
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600"
-              title="Physical board linked"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Board
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              Physical board linked
             </span>
           ) : (
             <button
               onClick={onClaimDevice}
-              className="text-[11px] font-medium px-2.5 py-1 rounded-full border border-[#1d4ed8] text-[#1d4ed8] hover:bg-[#f5f9ff] transition-colors"
-              title="Link a physical board that's powered on and waiting to be claimed"
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#1d4ed8] hover:text-[#1e40af] transition-colors w-fit"
             >
-              Link physical board
+              <span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" />
+              Link a physical board
             </button>
           )}
           {claimError && (
@@ -54,7 +53,7 @@ export default function GameModeRow({
         </div>
         <button
           onClick={onLeaveRoom}
-          className="text-xs px-3 py-2 rounded-md border border-red-200 bg-white text-red-500 hover:bg-red-50 transition-colors"
+          className="text-xs px-3 py-2 rounded-md border border-red-200 bg-white text-red-500 hover:bg-red-50 transition-colors shrink-0"
         >
           Leave Room
         </button>
