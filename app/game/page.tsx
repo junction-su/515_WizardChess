@@ -59,6 +59,7 @@ function useChessGame() {
   const [players, setPlayers] = useState<PlayerConfig>({ w: 'human', b: 'human' })
   const [localMode, setLocalMode] = useState(true)
   const [lobbyOpen, setLobbyOpen] = useState(true)
+  const [lobbyError, setLobbyError] = useState<string | null>(null)
   const [attackAnim, setAttackAnim] = useState<AttackAnimState | null>(null)
   const nextAttackAnimIdRef = useRef(0)
 
@@ -214,6 +215,7 @@ function useChessGame() {
       // Entered a room (create/join/auto-rejoin) — switch to online play.
       setLocalMode(false)
       setLobbyOpen(false)
+      setLobbyError(null)
       setAnnouncement(
         e.color
           ? `Joined room ${e.code} as ${e.color === 'w' ? 'White' : 'Black'}.`
@@ -228,6 +230,7 @@ function useChessGame() {
     }
 
     if (e.kind === 'error') {
+      setLobbyError(e.reason)
       setAnnouncement(e.reason)
       return
     }
@@ -469,7 +472,8 @@ function useChessGame() {
     pending, illegalReason,
     players, setPlayers, engineReady,
     localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
-    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, boardConnected,
+    lobbyOpen, setLobbyOpen, lobbyError, setLobbyError,
+    roomCode, myColor, peerConnected, boardConnected,
     createRoom, joinRoom, leaveToLobby,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   }
@@ -477,11 +481,13 @@ function useChessGame() {
 
 function LobbyOverlay({
   connectionStatus,
+  error,
   onLocalPlay,
   onCreateRoom,
   onJoinRoom,
 }: {
   connectionStatus: 'connected' | 'disconnected' | 'syncing'
+  error: string | null
   onLocalPlay: () => void
   onCreateRoom: () => void
   onJoinRoom: (code: string) => void
@@ -550,15 +556,20 @@ function LobbyOverlay({
             Join
           </button>
         </div>
+
+        {error && (
+          <div className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-center" role="alert">
+            {error}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-// Floating pill over the board while waiting for the opponent — the one
-// moment the room code actually needs to be front and center. Disappears
-// as soon as the opponent joins.
-function WaitingPill({ roomCode }: { roomCode: string }) {
+// Light dimmed overlay while waiting for the opponent — the game can't
+// start without them anyway. Disappears the moment they join.
+function WaitingOverlay({ roomCode, onLeave }: { roomCode: string; onLeave: () => void }) {
   const [copied, setCopied] = useState(false)
 
   const copyInvite = async () => {
@@ -578,22 +589,36 @@ function WaitingPill({ roomCode }: { roomCode: string }) {
   }
 
   return (
-    <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-white/95 border border-stone-200 shadow rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-3 whitespace-nowrap">
-      <span className="flex items-center gap-1.5 text-xs text-amber-600">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-        Waiting for opponent
-      </span>
-      <span className="font-mono font-bold tracking-[0.2em] text-[#1c1917] text-sm">{roomCode}</span>
-      <button
-        onClick={copyInvite}
-        className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-          copied
-            ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-            : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50 hover:text-stone-700'
-        }`}
-      >
-        {copied ? '✓ Copied!' : 'Copy invite'}
-      </button>
+    <div
+      className="fixed inset-0 flex items-center justify-center z-40 p-4"
+      style={{ background: 'rgba(237, 239, 243, 0.6)', backdropFilter: 'blur(3px)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Waiting for opponent"
+    >
+      <div className="bg-white border border-[#d8dde7] rounded-3xl shadow-2xl px-8 py-7 flex flex-col items-center gap-4 w-full max-w-[320px]">
+        <span className="flex items-center gap-2 text-sm text-amber-600">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          Waiting for opponent…
+        </span>
+        <div className="font-mono font-bold tracking-[0.3em] text-[#1c1917] text-3xl">{roomCode}</div>
+        <button
+          onClick={copyInvite}
+          className={`w-full h-[44px] rounded-xl font-semibold text-sm transition-colors shadow-sm ${
+            copied
+              ? 'bg-emerald-50 border border-emerald-300 text-emerald-600'
+              : 'bg-[#1d4ed8] text-white hover:bg-[#1e40af]'
+          }`}
+        >
+          {copied ? '✓ Copied!' : 'Copy invite link'}
+        </button>
+        <button
+          onClick={onLeave}
+          className="text-xs text-stone-400 hover:text-red-500 transition-colors"
+        >
+          Leave Room
+        </button>
+      </div>
     </div>
   )
 }
@@ -656,7 +681,8 @@ export default function Home() {
     pending, illegalReason,
     players, setPlayers, engineReady,
     localMode, changeMode, attackAnim, setAttackAnim, flushPendingLocalMove,
-    lobbyOpen, setLobbyOpen, roomCode, myColor, peerConnected, boardConnected,
+    lobbyOpen, setLobbyOpen, lobbyError, setLobbyError,
+    roomCode, myColor, peerConnected, boardConnected,
     createRoom, joinRoom, leaveToLobby,
     selectSquare, confirmMove, cancelSelection, resetBoard,
   } = useChessGame()
@@ -671,19 +697,21 @@ export default function Home() {
 
       <StatusHeader status={connectionStatus} />
 
-      {/* Waiting pill floats just under the header, above the board area */}
+      {/* Waiting overlay — the game can't start until the opponent joins */}
       {online && roomCode && !peerConnected && !lobbyOpen && (
-        <div className="relative z-30 h-0">
-          <WaitingPill roomCode={roomCode} />
-        </div>
+        <WaitingOverlay roomCode={roomCode} onLeave={leaveToLobby} />
       )}
 
       {lobbyOpen && (
         <LobbyOverlay
           connectionStatus={connectionStatus}
+          error={lobbyError}
           onLocalPlay={() => changeMode(true)}
           onCreateRoom={createRoom}
-          onJoinRoom={joinRoom}
+          onJoinRoom={(code) => {
+            setLobbyError(null)
+            joinRoom(code)
+          }}
         />
       )}
 
@@ -754,7 +782,7 @@ export default function Home() {
             peerConnected={peerConnected}
             boardConnected={boardConnected}
             onLeaveRoom={leaveToLobby}
-            hideMobileControls={lobbyOpen}
+            hideMobileControls={lobbyOpen || (online && !peerConnected)}
           />
 
           {/* Game Mode + Reset — desktop/tablet only; mobile renders this
