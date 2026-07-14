@@ -132,6 +132,22 @@ export default function IntroPage() {
             lg:top-[73.9%]
           "
         >
+          {/* Status line sits above the button, not below — so the button
+              stays anchored right at the edge and never gets pushed up.
+              Fixed height (not min-height) so it always reserves its
+              space — a lone space character collapses to 0 height in some
+              browsers, which would otherwise shift the button when real
+              text appears. */}
+          <p
+            className={`h-4 mb-4 text-xs text-white/40 text-center transition-opacity duration-300 ${
+              status === 'idle' ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {status === 'connecting' && 'Setting up your game…'}
+            {status === 'done' && 'Launching game…'}
+            {status === 'idle' && ' '}
+          </p>
+
           <button
             onClick={handleConnect}
             disabled={status !== 'idle'}
@@ -158,21 +174,8 @@ export default function IntroPage() {
             {status === 'done' && '✓  Ready!'}
           </button>
 
-          {/* Fixed height (not just min-height) so this line always
-              reserves its space — a lone space character collapses to 0
-              height in some browsers, which would shift the button up
-              the instant real status text appears. */}
-          <p
-            className={`h-4 mt-4 text-xs text-white/40 text-center transition-opacity duration-300 ${
-              status === 'idle' ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            {status === 'connecting' && 'Setting up your game…'}
-            {status === 'done' && 'Launching game…'}
-            {status === 'idle' && ' '}
-          </p>
-
-          <div className="mt-6 text-[11px] tracking-wide text-white/30 whitespace-nowrap">
+          {/* Desktop only — hidden on mobile per request. */}
+          <div className="hidden md:block mt-6 text-[11px] tracking-wide text-white/30 whitespace-nowrap">
             © 2026 Su Hyun Jung
           </div>
         </div>
