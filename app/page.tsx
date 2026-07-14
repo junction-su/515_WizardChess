@@ -158,8 +158,12 @@ export default function IntroPage() {
             {status === 'done' && '✓  Ready!'}
           </button>
 
+          {/* Fixed height (not just min-height) so this line always
+              reserves its space — a lone space character collapses to 0
+              height in some browsers, which would shift the button up
+              the instant real status text appears. */}
           <p
-            className={`mt-4 text-xs text-white/40 text-center transition-opacity duration-300 ${
+            className={`h-4 mt-4 text-xs text-white/40 text-center transition-opacity duration-300 ${
               status === 'idle' ? 'opacity-0' : 'opacity-100'
             }`}
           >
@@ -167,11 +171,10 @@ export default function IntroPage() {
             {status === 'done' && 'Launching game…'}
             {status === 'idle' && ' '}
           </p>
-        </div>
 
-        {/* Design credit */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[11px] tracking-wide text-white/30 whitespace-nowrap pointer-events-none">
-          © 2026 Su Hyun Jung
+          <div className="mt-6 text-[11px] tracking-wide text-white/30 whitespace-nowrap">
+            © 2026 Su Hyun Jung
+          </div>
         </div>
       </div>
     </div>
