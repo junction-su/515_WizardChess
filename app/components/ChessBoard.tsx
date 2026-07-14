@@ -158,17 +158,6 @@ export default function ChessBoard({
           </div>
         </div>
       </div>
-
-      {/* Credit — spacer matches the rank-label column width so the text
-          centers under the squares themselves, not the whole card (the
-          card's own padding is asymmetric, which would throw off a naive
-          center). */}
-      <div className="flex mt-2 sm:mt-3">
-        <div className="w-5 sm:w-6 shrink-0" aria-hidden="true" />
-        <div className="flex-1 text-center text-[11px] text-stone-400 select-none">
-          © 2026 Su Hyun Jung
-        </div>
-      </div>
     </div>
   )
 }

@@ -781,18 +781,28 @@ export default function Home() {
       <main className="flex flex-col md:flex-row md:flex-1 md:overflow-hidden">
         {/* Board area */}
         <div className="relative flex items-center justify-center p-3 sm:p-6 md:flex-1 md:p-4 lg:p-6 xl:p-8 overflow-hidden">
-          <ChessBoard
-            board={board}
-            selectedSquare={selection.from}
-            destinationSquare={selection.to}
-            impactSquare={attackAnim?.to ?? null}
-            legalMoves={legalMoves}
-            lastMove={lastMove}
-            inCheck={gameStatus === 'check' || gameStatus === 'checkmate'}
-            currentTurn={currentTurn}
-            onSquareClick={selectSquare}
-            flipped={online && myColor === 'b'}
-          />
+          <div className="flex flex-col items-center">
+            <ChessBoard
+              board={board}
+              selectedSquare={selection.from}
+              destinationSquare={selection.to}
+              impactSquare={attackAnim?.to ?? null}
+              legalMoves={legalMoves}
+              lastMove={lastMove}
+              inCheck={gameStatus === 'check' || gameStatus === 'checkmate'}
+              currentTurn={currentTurn}
+              onSquareClick={selectSquare}
+              flipped={online && myColor === 'b'}
+            />
+            {/* Centered under the board card. The card's padding is
+                asymmetric (small top/left, larger bottom/right) so the
+                visual center drifts a few px off the card's true center on
+                desktop — nudge it back with a small breakpoint-specific
+                offset. Mobile is left as-is. */}
+            <div className="mt-3 text-[11px] tracking-wide text-stone-400 select-none md:ml-[12px] lg:ml-[4px] xl:ml-0">
+              © 2026 Su Hyun Jung
+            </div>
+          </div>
           {pending && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white/95 border border-stone-200 shadow rounded-full px-4 py-1.5 text-xs font-medium text-stone-700">
               {pending.phase === 'sending'
