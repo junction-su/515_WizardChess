@@ -168,6 +168,11 @@ export default function IntroPage() {
             {status === 'idle' && ' '}
           </p>
         </div>
+
+        {/* Design credit */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[11px] tracking-wide text-white/30 whitespace-nowrap pointer-events-none">
+          © 2026 Su Hyun Jung
+        </div>
       </div>
     </div>
   )
