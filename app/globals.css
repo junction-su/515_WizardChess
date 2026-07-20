@@ -18,6 +18,15 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Tailwind v4's preflight resets buttons to cursor: default (v3 used
+   pointer). Restore the hand cursor on every enabled interactive control;
+   disabled ones keep their own cursor (not-allowed where set). */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+[role="switch"]:not(:disabled) {
+  cursor: pointer;
+}
+
 @keyframes attack-rpg {
   0%   { transform: translateX(0px);    opacity: 0; }
   15%  { transform: translateX(60px);   opacity: 1; }
