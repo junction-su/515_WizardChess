@@ -56,7 +56,10 @@ export default function GameModeRow({
             Leave Room
           </button>
           {claimError && (
-            <span className="absolute top-full right-0 mt-1 text-[11px] text-red-500 whitespace-nowrap">
+            /* Pops upward — the row sits at the very bottom of an
+               overflow-hidden rounded panel, so anything below it gets
+               clipped. */
+            <span className="absolute bottom-full right-0 mb-1.5 text-[11px] text-red-500 whitespace-nowrap bg-white/95 px-2 py-1 rounded-md border border-red-100 shadow-sm">
               {claimError}
             </span>
           )}
